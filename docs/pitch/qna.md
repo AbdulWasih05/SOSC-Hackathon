@@ -1,4 +1,4 @@
-# Judge Q&A — Palk Watch
+# Judge Q&A: Palk Watch
 
 Answers for the judging checkpoints. Judges are recent alumni engineers: they
 reward working demos, honest benchmarks, and clean repos; they punish enterprise
@@ -14,15 +14,16 @@ No em dashes. Say the honest number.
 Machine: Windows 11 dev laptop, 8 CPUs, Go 1.26.5. The locked 60s methodology
 run happens on the team's weakest Linux laptop before the final slide.
 
-| Metric | Number | Notes |
-|--------|--------|-------|
-| Throughput floor | 50,000 msgs/sec | The problem-statement requirement |
-| Real-data throughput | 8,681,066 msgs/sec | `make bench`, real Danish AIS (aisdk), 2,396 distinct vessels, ~174x the floor |
-| Synthetic throughput | 8,126,083 msgs/sec | `make bench-firehose`, 98,064 distinct vessels (fuller state table) |
-| Dropped messages | 0 | At both benchmark rates |
-| Inline alert latency | p50 768 us, p99 3072 us | Zone + spoof, per message (single-digit ms) |
-| Dark-event detection | 1s sweep + silence threshold | Absence, never a millisecond claim; ~60s for a slow vessel |
-| Sweep scan cost | p50 3072 us, p99 6144 us | Cost of one full-table dark scan over ~98k vessels, far inside the 1s tick |
+
+| Metric               | Number                       | Notes                                                                          |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| Throughput floor     | 50,000 msgs/sec              | The problem-statement requirement                                              |
+| Real-data throughput | 8,681,066 msgs/sec           | `make bench`, real Danish AIS (aisdk), 2,396 distinct vessels, ~174x the floor |
+| Synthetic throughput | 8,126,083 msgs/sec           | `make bench-firehose`, 98,064 distinct vessels (fuller state table)            |
+| Dropped messages     | 0                            | At both benchmark rates                                                        |
+| Inline alert latency | p50 768 us, p99 3072 us      | Zone + spoof, per message (single-digit ms)                                    |
+| Dark-event detection | 1s sweep + silence threshold | Absence, never a millisecond claim; ~60s for a slow vessel                     |
+| Sweep scan cost      | p50 3072 us, p99 6144 us     | Cost of one full-table dark scan over ~98k vessels, far inside the 1s tick     |
 
 One-line version: "50k floor, met at 8.7 million per second on real Danish AIS,
 zero dropped, single-digit millisecond inline latency, on a laptop."
@@ -44,6 +45,8 @@ tens of messages/sec; we loop the real message shapes at full speed to measure
 the engine's actual capacity.
 
 **Q: What did it measure?**
+
+
 
 8,681,066 messages/sec sustained over 10 seconds on real Danish AIS (Windows 11,
 8 CPUs, Go 1.26.5), 2,396 distinct real vessels, 0 dropped, inline latency p50
@@ -132,31 +135,47 @@ bounded even when a batch is not full.
 
 ---
 
-## The risk score (post-P0, once shipped)
+## The risk score (shipped, the headline)
 
 **Q: Does this tell me a ship is fishing illegally?**
 
 No system can say that from AIS alone, and we do not claim it. We output a 0 to
 100 suspicion score where every point is a readable fact: a zone violation, a
-dark event, a spoof, a fishing-speed movement pattern. Authorities verify; we
-prioritize which vessel a patrol boards first. Tiers are LOW, ELEVATED, HIGH,
-CRITICAL. The ceiling wording we ever use is "illegal fishing suspected,
-evidence attached."
+dark event, a spoof. Authorities verify; we prioritize which vessel a patrol
+boards first. Tiers are LOW (0-39), ELEVATED (40-64), HIGH (65-84), CRITICAL
+(85+). The ceiling wording we ever use is "illegal fishing suspected, evidence
+attached." The dashboard drawer literally says "evidence attached, not a
+verdict."
+
+**Q: Show me the math. How does a score add up?**
+
+Each factor is a decayed contribution, and the drawer shows every line. Today's
+weights: a recent protected-zone violation is +30, a spoof is +15, a dark event
+is +15 for the first and +10 for each additional one. Every factor decays with a
+24-hour half-life over a 48-hour window, so the score reflects recent behavior.
+In our demo, KADAL SELVI enters the marine park (+30), teleports once (+15), then
+goes dark repeatedly near the park: at two dark events its score is 70 (HIGH,
+fires ILLEGAL_FISHING_SUSPECTED); at four it is 90 (CRITICAL, fires
+BOARDING_RECOMMENDED with the intercept solutions attached). You watch the
+evidence accumulate, line by line.
 
 **Q: How are the weights set?**
 
-Hand-calibrated and validated against scripted scenarios, adjustable in a config
-file. Production calibration against real enforcement outcomes is the roadmap. We
-are explicit that this is expert-tuned, not learned, which is exactly why every
-point is explainable. Incumbents ship ML scores with accuracy caveats; we ship a
-score you can read line by line.
+Hand-calibrated and validated against scripted scenarios, adjustable in the
+config. Production calibration against real enforcement outcomes is the roadmap.
+We are explicit that this is expert-tuned, not learned, which is exactly why
+every point is explainable. Incumbents ship ML scores with accuracy caveats; we
+ship a score you can read line by line. A fishing-movement factor (trawl-like
+speed and course patterns) is the next weight in, designed and specified.
 
 **Q: Why a 5-second sweep and not instant?**
 
 Scoring is a judgment cycle, not a reflex. It runs on a 5-second sweep over only
-the vessels that already have a nonzero factor, so it adds nothing to the
-per-message hot path. The benchmark proves the engine still holds full ingest
-rate with scoring active.
+the vessels that already have a nonzero factor (the scored active set), so it
+adds nothing to the per-message hot path: the inline checks only stamp a factor
+timestamp when they already fire an alert. The benchmark proves the engine still
+holds full ingest rate with scoring active, and the metrics frame reports the
+sweep duration (risk_sweep_us) and the scored-vessel count live.
 
 ---
 
