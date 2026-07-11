@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -102,6 +103,34 @@ func (p *Pipeline) RunFirehose(msgs []Message, dur time.Duration) uint64 {
 	}
 	close(p.batchCh)
 	return ingested
+}
+
+// RunFirehoseCtx is the firehose producer for the running binary: it loops over
+// msgs until ctx is cancelled, then closes the channel to drain the workers.
+// Same fast path as RunFirehose (one channel op per batch), for Act 3.
+func (p *Pipeline) RunFirehoseCtx(ctx context.Context, msgs []Message) {
+	i := 0
+	buf := p.getBuf()
+	for ctx.Err() == nil {
+		for len(*buf) < BatchSize {
+			m := msgs[i]
+			i++
+			if i == len(msgs) {
+				i = 0
+			}
+			m.IngestNs = NowNs()
+			*buf = append(*buf, m)
+		}
+		p.counters.Ingested.Add(uint64(len(*buf)))
+		select {
+		case p.batchCh <- buf:
+		case <-ctx.Done():
+			close(p.batchCh)
+			return
+		}
+		buf = p.getBuf()
+	}
+	close(p.batchCh)
 }
 
 // RunSource is the live/scenario producer. It batches messages arriving on src

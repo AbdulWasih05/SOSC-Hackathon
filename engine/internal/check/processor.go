@@ -2,6 +2,7 @@ package check
 
 import (
 	"fmt"
+	"math"
 	"sync/atomic"
 
 	"palkwatch/internal/alert"
@@ -71,9 +72,10 @@ func (w *Worker) handle(m *ingest.Message) {
 	})
 	p.counters.Processed.Add(1)
 
-	// Geofence: zones entered on this fix (outside-to-inside). Skip the first
-	// sighting so appearing already-inside is not a false transition.
+	// Inline checks run only once a baseline fix exists, so a vessel's first
+	// sighting cannot be a false transition or a false teleport.
 	if existed {
+		// Geofence: zones entered on this fix (outside-to-inside).
 		entered := newMask &^ prev.ZoneMask
 		for _, zi := range w.zoneBuf {
 			if entered&(1<<uint(zi)) == 0 {
@@ -82,6 +84,12 @@ func (w *Worker) handle(m *ingest.Message) {
 			z := p.grid.Zones()[zi]
 			if ZoneViolation(z.Kind, z.CountryCode, m.FlagCode) {
 				p.emitZone(m, z)
+			}
+		}
+		// Spoof: physically impossible jump from the previous fix.
+		if prev.LastTsMs != 0 {
+			if spoof, impliedKn := SpoofTeleport(prev.LastLat, prev.LastLon, prev.LastTsMs, m.Lat, m.Lon, m.TsMs); spoof {
+				p.emitSpoof(m, impliedKn)
 			}
 		}
 	}
@@ -105,5 +113,21 @@ func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 		Lon:      m.Lon,
 		ZoneID:   z.ID,
 		Detail:   map[string]any{"zone_kind": z.Kind},
+	})
+}
+
+func (p *Processor) emitSpoof(m *ingest.Message, impliedKn float64) {
+	id := p.seq.Add(1)
+	p.counters.Alerts.Add(1)
+	p.sink(alert.Alert{
+		ID:       fmt.Sprintf("a-%06d", id),
+		Kind:     alert.KindSpoof,
+		Severity: alert.SeverityHigh,
+		MMSI:     m.MMSI,
+		Name:     p.cold.Name(m.MMSI),
+		TsMs:     m.TsMs,
+		Lat:      m.Lat,
+		Lon:      m.Lon,
+		Detail:   map[string]any{"implied_speed_kn": math.Round(impliedKn*10) / 10},
 	})
 }
