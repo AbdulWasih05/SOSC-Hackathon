@@ -149,7 +149,7 @@ func (p *Processor) emitFishing(m *ingest.Message, kind string, detail string) {
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     kind,
-		Severity: alert.SeverityHigh,
+		Severity: alert.SeverityMedium,
 		MMSI:     m.MMSI,
 		Name:     p.cold.Name(m.MMSI),
 		TsMs:     m.TsMs,

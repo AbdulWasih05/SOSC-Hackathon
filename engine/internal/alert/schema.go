@@ -17,6 +17,8 @@ const (
 const (
 	SeverityHigh     = "HIGH"
 	SeverityCritical = "CRITICAL"
+	SeverityMedium   = "MEDIUM"
+	SeverityLow      = "LOW"
 )
 
 // Envelope is the top-level websocket frame for a single alert.

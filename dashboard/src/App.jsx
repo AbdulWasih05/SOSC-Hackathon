@@ -140,7 +140,9 @@ export default function App() {
           onClick={() => setMobileTab('alerts')}
         >
           <span className="mobile-nav-icon">⚠</span>
-          Alerts{alerts.length > 0 ? ` (${alerts.length})` : ''}
+          Alerts{alerts.filter(a => a.severity === 'HIGH' || a.severity === 'CRITICAL').length > 0
+            ? ` (${alerts.filter(a => a.severity === 'HIGH' || a.severity === 'CRITICAL').length})`
+            : ''}
         </button>
         <button
           className={`mobile-nav-tab${mobileTab === 'stats' ? ' active' : ''}`}

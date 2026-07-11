@@ -1,10 +1,14 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { KIND_COLOR, KIND_LABEL } from '../theme.js'
+
+// Severities that belong in the Alerts tab (security-grade events).
+const ALERT_SEVERITIES = new Set(['HIGH', 'CRITICAL'])
 
 function detailLine(a) {
   if (a.kind === 'SPOOF_TELEPORT') return `implied ${Math.round(a.detail?.implied_speed_kn ?? 0)} kn`
   if (a.kind === 'DARK_EVENT') return `silent ${Math.round(a.detail?.silence_s ?? 0)} s · ${a.zone_id}`
-  return a.zone_id
+  if (a.detail?.pattern) return a.detail.pattern
+  return a.zone_id || ''
 }
 
 function Intercepts({ list }) {
@@ -36,6 +40,7 @@ function Row({ a, onAlertClick }) {
           </span>
           <span className="feed-name">{a.name || `MMSI ${a.mmsi}`}</span>
           {a.severity === 'CRITICAL' && <span className="feed-crit">CRITICAL</span>}
+          {a.severity === 'MEDIUM' && <span className="feed-log-badge">LOG</span>}
         </div>
         <div className="feed-detail">{detailLine(a)}</div>
         <Intercepts list={a.intercepts} />
@@ -44,20 +49,53 @@ function Row({ a, onAlertClick }) {
   )
 }
 
+function EmptyState({ tab }) {
+  return (
+    <div className="feed-empty">
+      {tab === 'alerts'
+        ? 'No HIGH or CRITICAL alerts detected'
+        : 'No observational logs yet'}
+    </div>
+  )
+}
+
 function AlertFeed({ alerts, onAlertClick }) {
+  const [tab, setTab] = useState('alerts')
+
+  const alertItems = alerts.filter((a) => ALERT_SEVERITIES.has(a.severity))
+  const logItems   = alerts.filter((a) => !ALERT_SEVERITIES.has(a.severity))
+  const active     = tab === 'alerts' ? alertItems : logItems
+
   return (
     <div className="panel feed">
-      <div className="panel-header">
-        <span className="panel-title">Alerts</span>
-        {alerts.length > 0 && (
-          <span className="panel-title-count">{alerts.length}</span>
-        )}
+      {/* Tab header */}
+      <div className="feed-tabs">
+        <button
+          className={`feed-tab${tab === 'alerts' ? ' active' : ''}`}
+          onClick={() => setTab('alerts')}
+        >
+          Alerts
+          {alertItems.length > 0 && (
+            <span className="feed-tab-badge feed-tab-badge--alert">{alertItems.length}</span>
+          )}
+        </button>
+        <button
+          className={`feed-tab${tab === 'logs' ? ' active' : ''}`}
+          onClick={() => setTab('logs')}
+        >
+          Logs
+          {logItems.length > 0 && (
+            <span className="feed-tab-badge">{logItems.length}</span>
+          )}
+        </button>
       </div>
+
+      {/* Feed list */}
       <div className="feed-list">
-        {alerts.length === 0 ? (
-          <div className="feed-empty">No alerts detected yet</div>
+        {active.length === 0 ? (
+          <EmptyState tab={tab} />
         ) : (
-          alerts.map((a) => <Row key={a.id} a={a} onAlertClick={onAlertClick} />)
+          active.map((a) => <Row key={a.id} a={a} onAlertClick={onAlertClick} />)
         )}
       </div>
     </div>
