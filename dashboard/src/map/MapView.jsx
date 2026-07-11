@@ -1,0 +1,211 @@
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import maplibregl from 'maplibre-gl'
+import { HTTP_BASE } from '../ws.js'
+import { conePolygon, interceptLine } from './cone.js'
+import { KIND_COLOR } from '../theme.js'
+
+// Offline style: no external tiles (the pitch runs on localhost with no venue
+// wifi). Zones and vessels are drawn as GeoJSON layers over a dark canvas.
+const EMPTY_STYLE = {
+  version: 8,
+  sources: {},
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0a0f1e' } }],
+}
+
+const CENTER = [79.25, 9.0]
+const EMPTY_FC = { type: 'FeatureCollection', features: [] }
+
+// How long alert emphasis (flagged vessel, cone, intercept) stays on the map.
+const CONE_TTL_MS = 15000
+const FLAG_TTL_MS = 9000
+
+const MapView = forwardRef(function MapView(_, ref) {
+  const containerRef = useRef(null)
+  const mapRef = useRef(null)
+  const readyRef = useRef(false)
+  const patrolsRef = useRef({})
+  const conesRef = useRef(new Map()) // id -> {feature, expires}
+  const flagsRef = useRef(new Map()) // mmsi -> {feature, expires}
+  const linesRef = useRef(new Map())
+
+  useEffect(() => {
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: EMPTY_STYLE,
+      center: CENTER,
+      zoom: 8.2,
+      attributionControl: false,
+    })
+    mapRef.current = map
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
+
+    map.on('load', async () => {
+      // Zones from the engine (single source of truth).
+      try {
+        const zones = await fetch(`${HTTP_BASE}/zones`).then((r) => r.json())
+        map.addSource('zones', { type: 'geojson', data: zones })
+        map.addLayer({
+          id: 'zone-fill',
+          type: 'fill',
+          source: 'zones',
+          paint: {
+            'fill-color': ['match', ['get', 'type'], 'mpa', '#e66767', /* eez */ '#3987e5'],
+            'fill-opacity': ['match', ['get', 'type'], 'mpa', 0.14, 0.05],
+          },
+        })
+        map.addLayer({
+          id: 'zone-line',
+          type: 'line',
+          source: 'zones',
+          paint: {
+            'line-color': ['match', ['get', 'type'], 'mpa', '#e66767', '#3987e5'],
+            'line-width': ['match', ['get', 'type'], 'mpa', 1.5, 1],
+            'line-opacity': 0.7,
+          },
+        })
+      } catch {
+        /* zones optional; map still works */
+      }
+
+      // Patrol assets.
+      try {
+        const doc = await fetch(`${HTTP_BASE}/patrols`).then((r) => r.json())
+        const feats = (doc.patrols || []).map((p) => {
+          patrolsRef.current[p.id] = p
+          return {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
+            properties: { id: p.id },
+          }
+        })
+        map.addSource('patrols', { type: 'geojson', data: { type: 'FeatureCollection', features: feats } })
+        map.addLayer({
+          id: 'patrol-dot',
+          type: 'circle',
+          source: 'patrols',
+          paint: {
+            'circle-radius': 6,
+            'circle-color': '#e6edf3',
+            'circle-stroke-color': '#0a0f1e',
+            'circle-stroke-width': 2,
+          },
+        })
+      } catch {
+        /* patrols optional */
+      }
+
+      // Vessel field.
+      map.addSource('vessels', { type: 'geojson', data: EMPTY_FC })
+      map.addLayer({
+        id: 'vessel-dot',
+        type: 'circle',
+        source: 'vessels',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 1.5, 10, 3],
+          'circle-color': '#5b6b82',
+          'circle-opacity': 0.85,
+        },
+      })
+
+      // Intercept vectors (patrol -> dark vessel). Feasible solid green,
+      // infeasible dashed red.
+      map.addSource('intercepts', { type: 'geojson', data: EMPTY_FC })
+      map.addLayer({
+        id: 'intercept-line',
+        type: 'line',
+        source: 'intercepts',
+        paint: {
+          // line-dasharray is not data-driven in MapLibre, so feasibility is
+          // encoded by color (green vs red), not dash pattern.
+          'line-color': ['case', ['get', 'feasible'], '#0ca30c', '#e66767'],
+          'line-width': 2,
+          'line-opacity': 0.9,
+        },
+      })
+
+      // Dead-reckoning cones (drawn from the scalar).
+      map.addSource('cones', { type: 'geojson', data: EMPTY_FC })
+      map.addLayer({
+        id: 'cone-fill',
+        type: 'fill',
+        source: 'cones',
+        paint: { 'fill-color': '#e66767', 'fill-opacity': 0.22 },
+      })
+      map.addLayer({
+        id: 'cone-line',
+        type: 'line',
+        source: 'cones',
+        paint: { 'line-color': '#e66767', 'line-width': 1.5 },
+      })
+
+      // Flagged (recently alerted) vessels, colored by kind, drawn on top.
+      map.addSource('flags', { type: 'geojson', data: EMPTY_FC })
+      map.addLayer({
+        id: 'flag-dot',
+        type: 'circle',
+        source: 'flags',
+        paint: {
+          'circle-radius': 7,
+          'circle-color': ['get', 'color'],
+          'circle-stroke-color': '#0a0f1e',
+          'circle-stroke-width': 2,
+        },
+      })
+
+      readyRef.current = true
+    })
+
+    // Expire emphasis layers on a timer.
+    const sweep = setInterval(() => {
+      if (!readyRef.current) return
+      const now = Date.now()
+      let changed = false
+      for (const [id, v] of conesRef.current) if (v.expires < now) { conesRef.current.delete(id); changed = true }
+      for (const [id, v] of linesRef.current) if (v.expires < now) { linesRef.current.delete(id); changed = true }
+      for (const [id, v] of flagsRef.current) if (v.expires < now) { flagsRef.current.delete(id); changed = true }
+      if (changed) redraw()
+    }, 1000)
+
+    const redraw = () => {
+      const map = mapRef.current
+      if (!map || !readyRef.current) return
+      map.getSource('cones')?.setData({ type: 'FeatureCollection', features: [...conesRef.current.values()].map((v) => v.feature) })
+      map.getSource('intercepts')?.setData({ type: 'FeatureCollection', features: [...linesRef.current.values()].map((v) => v.feature) })
+      map.getSource('flags')?.setData({ type: 'FeatureCollection', features: [...flagsRef.current.values()].map((v) => v.feature) })
+    }
+    mapRef.current._redraw = redraw
+
+    return () => {
+      clearInterval(sweep)
+      map.remove()
+    }
+  }, [])
+
+  useImperativeHandle(ref, () => ({
+    setVessels(fc) {
+      if (readyRef.current) mapRef.current.getSource('vessels')?.setData(fc)
+    },
+    showAlert(a) {
+      if (!readyRef.current) return
+      const now = Date.now()
+      const color = KIND_COLOR[a.kind] || '#5b6b82'
+      flagsRef.current.set(a.mmsi, {
+        feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { color } },
+        expires: now + FLAG_TTL_MS,
+      })
+      if (a.cone) {
+        conesRef.current.set(a.id, { feature: conePolygon(a.cone, a.id), expires: now + CONE_TTL_MS })
+        ;(a.intercepts || []).forEach((ic, i) => {
+          const patrol = patrolsRef.current[ic.patrol_id]
+          if (patrol) linesRef.current.set(`${a.id}:${ic.patrol_id}`, { feature: interceptLine(patrol, a.cone, ic, `${a.id}:${i}`), expires: now + CONE_TTL_MS })
+        })
+        mapRef.current.easeTo({ center: [a.lon, a.lat], zoom: 9.2, duration: 1200 })
+      }
+      mapRef.current._redraw()
+    },
+  }))
+
+  return <div className="map" ref={containerRef} />
+})
+
+export default MapView

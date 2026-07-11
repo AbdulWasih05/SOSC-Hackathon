@@ -34,7 +34,23 @@ make test          # tests (table-driven coverage in check/ and geo/)
 
 Dashboard connects to the websocket at `ws://localhost:8080/ws`. The engine
 speaks three message types: `alert`, `metrics`, and `positions` (a GeoJSON
-FeatureCollection at up to 2/sec).
+FeatureCollection at up to 2/sec), and serves `/zones` and `/patrols` for the
+map.
+
+## Dashboard
+
+React + MapLibre GL, offline map style (no external tiles, no venue wifi).
+
+```
+cd dashboard
+npm install
+npm run dev        # http://localhost:5173, talks to the engine on :8080
+```
+
+Start the engine first (`cd engine && make scenario` for the story, or `make run`
+for the firehose), then open the dashboard. It renders the vessel field, zones,
+the alert feed, the throughput HUD, the inline/sweep latency panel, and the
+dead-reckoning cone plus intercept vectors on dark events.
 
 ## Layout
 

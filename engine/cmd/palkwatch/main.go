@@ -49,6 +49,10 @@ func main() {
 	hub := api.NewHub()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ws", hub.HandleWS)
+	// Static config for the dashboard: the map loads zones and patrol markers
+	// from the same binary, so there is one source of truth.
+	mux.HandleFunc("/zones", serveJSONFile(zones))
+	mux.HandleFunc("/patrols", serveJSONFile(patrol))
 	srv := &http.Server{Addr: addr, Handler: mux}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -76,6 +80,16 @@ func main() {
 	shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutCtx)
+}
+
+// serveJSONFile serves a JSON/GeoJSON file with permissive CORS so the dashboard
+// (served from a dev server on another port) can fetch it.
+func serveJSONFile(path string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+		http.ServeFile(w, r, path)
+	}
 }
 
 // engine bundles the built pieces shared by firehose and scenario modes.
