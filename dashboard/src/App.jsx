@@ -68,6 +68,8 @@ export default function App() {
         {/* Center: Map */}
         <div className="map-container">
           <MapView ref={mapRef} onVesselClick={onVesselClick} />
+          <MapLegend />
+
           {status !== 'connected' && (
             <div className="map-notice">
               <div className="notice-icon">i</div>
@@ -113,6 +115,39 @@ export default function App() {
             ) : null}
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// Static key for the map marks: zones (the colored squares), alert kinds
+// (flagged vessel dots), and assets. Pure presentation, no engine data.
+function MapLegend() {
+  return (
+    <div className="map-legend">
+      <div className="legend-title">Legend</div>
+      <div className="legend-group">
+        <span className="legend-label">Zones</span>
+        <div className="legend-row">
+          <span className="legend-swatch sq" style={{ background: 'rgba(230,103,103,0.18)', borderColor: '#e66767' }} />
+          Restricted / MPA
+        </div>
+        <div className="legend-row">
+          <span className="legend-swatch sq" style={{ background: 'rgba(57,135,229,0.10)', borderColor: '#3987e5' }} />
+          EEZ · national waters
+        </div>
+      </div>
+      <div className="legend-group">
+        <span className="legend-label">Alerts</span>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#3987e5' }} />Zone violation</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#c98500' }} />Spoof / teleport</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#e66767' }} />Dark event</div>
+      </div>
+      <div className="legend-group">
+        <span className="legend-label">Assets</span>
+        <div className="legend-row"><span className="legend-swatch dot ring" style={{ background: '#1a2332' }} />Patrol vessel</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#3e5c76' }} />Vessel</div>
+        <div className="legend-row"><span className="legend-swatch line" style={{ background: '#0ca30c' }} />Intercept · feasible</div>
       </div>
     </div>
   )
