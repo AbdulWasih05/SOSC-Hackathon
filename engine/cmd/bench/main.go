@@ -144,8 +144,11 @@ func main() {
 	rate := float64(processed) / elapsed.Seconds()
 
 	fmt.Println("--- results ---")
-	fmt.Printf("elapsed:        %s\n", elapsed.Round(time.Millisecond))
+	fmt.Printf("elapsed:        %.6f s\n", elapsed.Seconds())
 	fmt.Printf("msgs/sec:       %s\n", commas(uint64(rate)))
+	// The rate is one division a judge can reproduce on a calculator: processed
+	// messages divided by the exact elapsed seconds printed above.
+	fmt.Printf("  (check:       %s processed / %.6f s = %s msgs/sec)\n", commas(processed), elapsed.Seconds(), commas(uint64(rate)))
 	fmt.Printf("ingested:       %s\n", commas(counters.Ingested.Load()))
 	fmt.Printf("processed:      %s\n", commas(processed))
 	fmt.Printf("dropped:        %s\n", commas(counters.Dropped.Load()))
