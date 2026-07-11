@@ -1,5 +1,5 @@
 # Palk Watch engine. Run targets from the engine/ directory.
-.PHONY: run demo demo-fast live firehose scenario emit-fake bench test
+.PHONY: run demo demo-fast live firehose scenario scenario-risk demo-risk emit-fake bench bench-firehose test
 
 # DEMO: replay the recorded Danish AIS (aisdk) file. Real data, reproducible,
 # fully offline (no network, no venue wifi). This is the demo data source.
@@ -25,12 +25,32 @@ firehose:
 scenario:
 	go run ./cmd/palkwatch -scenario data/scenario.json
 
+# Act 2 with the IUU risk engine on (P0): KADAL SELVI climbs LOW -> ELEVATED ->
+# HIGH -> CRITICAL as evidence accumulates, firing ILLEGAL_FISHING_SUSPECTED then
+# BOARDING_RECOMMENDED with intercepts. The risk-score money shot.
+scenario-risk:
+	go run ./cmd/palkwatch -scenario data/scenario.json -risk
+
+# Recorded Danish AIS replay with the risk engine on: real vessels get scored and
+# colored by tier as they trip zone/spoof/dark checks.
+demo-risk:
+	go run ./cmd/palkwatch -csv data/aisdk-2025-02-27.csv -risk
+
 # Emit schema-valid alerts + metrics + positions for the frontend, no real engine.
 emit-fake:
 	go run ./cmd/palkwatch -fake
 
-# Benchmark. Prints methodology header now; measured 60s loop lands H4-H6.
+# Benchmark on REAL Danish AIS data: the file is parsed once into memory, then
+# looped through the engine at full speed (no network, no replay pacing) to
+# measure honest throughput on real AIS message shapes. This is the headline
+# number. -n caps how many real messages are parsed from the 3 GB file.
 bench:
+	go run ./cmd/bench -csv data/aisdk-2025-02-27.csv -n 5000000
+
+# Benchmark on the synthetic firehose: ~98k distinct vessels crafted to keep the
+# geofence firing. This is the headroom number (a fuller state table than the
+# real sample), reported alongside the real-data number, not instead of it.
+bench-firehose:
 	go run ./cmd/bench
 
 # Tests. Table-driven coverage lives in check/ and geo/.
