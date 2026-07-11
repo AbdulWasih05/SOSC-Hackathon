@@ -309,15 +309,24 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
       const now = Date.now()
       const color = KIND_COLOR[a.kind] || '#5b6b82'
       const isHighOrCrit = a.severity === 'HIGH' || a.severity === 'CRITICAL'
-      flagsRef.current.set(a.mmsi, {
-        feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { color, mmsi: a.mmsi } },
-        expires: isHighOrCrit ? Infinity : now + FLAG_TTL_MS,
-      })
+      
+      const weight = { CRITICAL: 3, HIGH: 2, MEDIUM: 1, LOW: 0 }
+      const newWeight = weight[a.severity] || 0
+      const existing = flagsRef.current.get(a.mmsi)
+      const existingWeight = existing ? (weight[existing.severity] || 0) : -1
+
+      if (newWeight >= existingWeight) {
+        flagsRef.current.set(a.mmsi, {
+          feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { color, mmsi: a.mmsi } },
+          expires: isHighOrCrit ? Infinity : now + FLAG_TTL_MS,
+          severity: a.severity,
+        })
+      }
       if (a.cone) {
-        conesRef.current.set(a.id, { feature: conePolygon(a.cone, a.id), expires: now + CONE_TTL_MS })
+        conesRef.current.set(a.id, { feature: conePolygon(a.cone, a.id), expires: isHighOrCrit ? Infinity : now + CONE_TTL_MS })
         ;(a.intercepts || []).forEach((ic, i) => {
           const patrol = patrolsRef.current[ic.patrol_id]
-          if (patrol) linesRef.current.set(`${a.id}:${ic.patrol_id}`, { feature: interceptLine(patrol, a.cone, ic, `${a.id}:${i}`), expires: now + CONE_TTL_MS })
+          if (patrol) linesRef.current.set(`${a.id}:${ic.patrol_id}`, { feature: interceptLine(patrol, a.cone, ic, `${a.id}:${i}`), expires: isHighOrCrit ? Infinity : now + CONE_TTL_MS })
         })
         mapRef.current.easeTo({ center: [a.lon, a.lat], zoom: 9.2, duration: 1200 })
       }
