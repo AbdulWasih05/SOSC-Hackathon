@@ -55,6 +55,9 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
   // GeoJSON setData per animation frame so a burst never queues redundant work.
   const pendingVesselsRef = useRef(null)
   const rafRef = useRef(0)
+  // Highlight marker: a custom HTML element placed at the selected vessel.
+  const highlightMarkerRef = useRef(null)
+  const highlightTimerRef  = useRef(null)
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -241,6 +244,8 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
     return () => {
       clearInterval(sweep)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+      if (highlightMarkerRef.current) highlightMarkerRef.current.remove()
       map.remove()
     }
   }, [])
@@ -280,6 +285,29 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
     flyTo(lat, lon) {
       if (!readyRef.current) return
       mapRef.current?.easeTo({ center: [lon, lat], zoom: 10, duration: 900 })
+    },
+    highlightVessel(lat, lon, color) {
+      if (!readyRef.current) return
+      // Remove any existing highlight marker
+      if (highlightMarkerRef.current) highlightMarkerRef.current.remove()
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+
+      // Build a custom HTML pulse ring and place it on the map
+      const el = document.createElement('div')
+      el.className = 'vessel-highlight-marker'
+      el.style.setProperty('--hcolor', color || '#3987e5')
+
+      highlightMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([lon, lat])
+        .addTo(mapRef.current)
+
+      // Auto-remove after 10 seconds
+      highlightTimerRef.current = setTimeout(() => {
+        if (highlightMarkerRef.current) {
+          highlightMarkerRef.current.remove()
+          highlightMarkerRef.current = null
+        }
+      }, 10000)
     },
   }))
 

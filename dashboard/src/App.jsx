@@ -6,6 +6,7 @@ import Latency from './panels/Latency.jsx'
 import FeatureCards from './panels/FeatureCards.jsx'
 import VesselDetails from './panels/VesselDetails.jsx'
 import { connect } from './ws.js'
+import { KIND_COLOR } from './theme.js'
 
 export default function App() {
   const [metrics, setMetrics] = useState(null)
@@ -31,7 +32,9 @@ export default function App() {
 
   // Fly the map to a clicked alert's vessel position and switch mobile to map.
   const onAlertClick = useCallback((a) => {
+    const color = KIND_COLOR[a.kind] || '#3987e5'
     mapRef.current?.flyTo(a.lat, a.lon)
+    mapRef.current?.highlightVessel(a.lat, a.lon, color)
     setMobileTab('map')
   }, [])
 
