@@ -12,6 +12,7 @@ the slide happens on the team's weakest Linux laptop at H18.
 | 9eb6f2f | H4 | 10s | 16 (2*workers) | 7,609,906 | 1536 us | 6144 us | 0 | first engine number; geofence fires ~670k alerts |
 | 9eb6f2f | H4 | 10s | 4 | 7,062,556 | 2 us | 3072 us | 0 | smaller buffer, lower latency, ~7% less throughput |
 | 6622e0f | H6 (v0-boring) | 8s x3 | 16 | ~6,000,000 (median) | 1536 us | 6144 us | 0 | spoof check added; median of 3 runs 5.68M/5.99M/6.00M |
+| 114dec9 | H12 | 8s x3 | 16 | ~9,000,000 (median) | 768 us | 3072 us | 0 | dark sweep added; runs 8.77M/9.47M/9.00M. Sweep latency p50 ~1.5ms, p99 3-6ms over 98k vessels |
 
 Notes:
 - Throughput is ~150x the 50k/s floor on this laptop. The constraint is met with
@@ -21,7 +22,10 @@ Notes:
   throughput for latency. Default 2*workers keeps p99 single-digit ms.
 - Race detector (`-race`) needs cgo and did not run on this Windows box (no C
   compiler). Run it on the Linux bench machine before the benchmark is LOCKED.
-- Sweep latency is not yet measured (dark-event sweep lands H12).
+- Sweep latency (H12+) is the cost of one full-table dark scan of ~98k vessels:
+  p50 ~1.5ms, p99 3-6ms, far inside the 1s sweep tick. This is scan cost, not
+  detection latency; dark detection latency is bounded by the 1s tick plus the
+  silence threshold and is never a millisecond claim.
 - H6 vs H4: adding the mandatory spoof check (one flat-plane DistanceM per
   message) costs ~20% throughput. This is inherent feature cost, not a
   regression bug; boring-first means the sqrt stays on the common path until
