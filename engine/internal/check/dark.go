@@ -43,12 +43,24 @@ type Sweeper struct {
 	fired map[uint32]int64
 }
 
-// NewSweeper builds a sweeper. ids is shared with the inline Processor.
+// NewSweeper builds a sweeper. ids is shared with the inline Processor. Only
+// non-EEZ zones (the small protected areas) count as zones of interest for the
+// proximity filter: the EEZ spans the whole region, so treating it as "of
+// interest" would defeat the filter that keeps open-ocean gaps from alerting.
 func NewSweeper(st *state.Shards, cold *state.Cold, zones []*geo.Zone, patrols []geo.Patrol, counters *alert.Counters, ids *alert.IDGen, sink alert.Sink) *Sweeper {
+	interest := make([]*geo.Zone, 0, len(zones))
+	for _, z := range zones {
+		if z.Kind != geo.KindEEZ {
+			interest = append(interest, z)
+		}
+	}
+	if len(interest) == 0 {
+		interest = zones // fallback: if only EEZ zones are configured, use them
+	}
 	return &Sweeper{
 		state:    st,
 		cold:     cold,
-		zones:    zones,
+		zones:    interest,
 		patrols:  patrols,
 		counters: counters,
 		ids:      ids,

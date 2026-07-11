@@ -1,17 +1,22 @@
 {
-  "note": "SKELETON. Deterministic Act 2 timeline, filled in at H16 by the data owner (PRD section 6, scenario mode). One example vessel shows the shape; events array drives the scripted story (zone violation, spoof teleport, dark event + intercept).",
   "name": "gulf-of-mannar-demo",
-  "tick_ms": 1000,
+  "description": "Act 2 scripted story. Frame t_ms are realistic AIS event times (vessels report every 60-300s), so implied speeds are honest and only the intended spoof teleports. 'speed' compresses playback wall-clock (60x here) so the action reads on stage; it does NOT compress the dark-event silence threshold, which is real wall-clock (6x expected interval ~ 60s for an 8kn vessel). Beats: Ghost teleports (spoof, ~2s), Meen Rani crosses into the MPA (zone, ~10s), Kadal Selvi goes dark 1.5nm from the MPA and the cone + intercept bloom at the silence threshold (~60s after its last fix). Non-dark vessels anchor (speed <= 1kn) so only Kadal Selvi goes dark.",
+  "speed": 60.0,
   "vessels": [
-    {
-      "mmsi": 419001234,
-      "name": "EXAMPLE TRAWLER",
-      "flag": "IN",
-      "spawn_lat": 9.05,
-      "spawn_lon": 79.20,
-      "speed_kn": 8.0,
-      "heading_deg": 45
-    }
+    { "mmsi": 419001111, "name": "MEEN RANI", "flag": "IN" },
+    { "mmsi": 412009999, "name": "GHOST", "flag": "LK" },
+    { "mmsi": 419002222, "name": "KADAL SELVI", "flag": "IN" }
   ],
-  "events": []
+  "frames": [
+    { "t_ms": 0,      "mmsi": 419002222, "lat": 8.8700, "lon": 79.10, "speed_kn": 8,   "heading_deg": 0 },
+    { "t_ms": 0,      "mmsi": 419001111, "lat": 8.8800, "lon": 79.15, "speed_kn": 9,   "heading_deg": 0 },
+    { "t_ms": 60000,  "mmsi": 412009999, "lat": 9.0000, "lon": 79.30, "speed_kn": 12,  "heading_deg": 90 },
+    { "t_ms": 60000,  "mmsi": 419002222, "lat": 8.8722, "lon": 79.10, "speed_kn": 8,   "heading_deg": 0 },
+    { "t_ms": 120000, "mmsi": 412009999, "lat": 9.5000, "lon": 79.90, "speed_kn": 12,  "heading_deg": 90 },
+    { "t_ms": 120000, "mmsi": 419002222, "lat": 8.8744, "lon": 79.10, "speed_kn": 8,   "heading_deg": 0 },
+    { "t_ms": 180000, "mmsi": 412009999, "lat": 9.5100, "lon": 79.90, "speed_kn": 0.5, "heading_deg": 90 },
+    { "t_ms": 300000, "mmsi": 419001111, "lat": 8.8925, "lon": 79.15, "speed_kn": 9,   "heading_deg": 0 },
+    { "t_ms": 600000, "mmsi": 419001111, "lat": 8.9050, "lon": 79.15, "speed_kn": 9,   "heading_deg": 0 },
+    { "t_ms": 660000, "mmsi": 419001111, "lat": 8.9065, "lon": 79.15, "speed_kn": 0.5, "heading_deg": 0 }
+  ]
 }

@@ -29,16 +29,18 @@ import (
 
 func main() {
 	var (
-		fake   bool
-		addr   string
-		zones  string
-		patrol string
-		total  int
+		fake     bool
+		addr     string
+		zones    string
+		patrol   string
+		scenario string
+		total    int
 	)
 	flag.BoolVar(&fake, "fake", false, "run the contract emitter (schema-valid alerts + metrics, no real engine)")
 	flag.StringVar(&addr, "addr", ":8080", "http listen address for the dashboard websocket")
 	flag.StringVar(&zones, "zones", "data/zones.geojson", "zone geojson path")
 	flag.StringVar(&patrol, "patrol", "data/patrol.json", "patrol config path")
+	flag.StringVar(&scenario, "scenario", "", "scenario json path (empty = firehose mode)")
 	flag.IntVar(&total, "n", 1_000_000, "firehose messages pre-generated and looped")
 	flag.Parse()
 
@@ -59,11 +61,14 @@ func main() {
 		}
 	}()
 
-	if fake {
+	switch {
+	case fake:
 		log.Info().Msg("fake emitter on: schema-valid alerts + metrics at demo rates")
 		go gen.RunFake(ctx, hub)
-	} else {
-		go runEngine(ctx, hub, zones, patrol, total)
+	case scenario != "":
+		go runScenario(ctx, hub, zones, patrol, scenario)
+	default:
+		go runFirehose(ctx, hub, zones, patrol, total)
 	}
 
 	<-ctx.Done()
@@ -73,18 +78,29 @@ func main() {
 	_ = srv.Shutdown(shutCtx)
 }
 
-// runEngine builds and runs the real engine against the firehose, broadcasting
-// telemetry over the websocket until ctx is cancelled.
-func runEngine(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string, total int) {
+// engine bundles the built pieces shared by firehose and scenario modes.
+type engine struct {
+	st       *state.Shards
+	cold     *state.Cold
+	counters *alert.Counters
+	pipe     *ingest.Pipeline
+	proc     *check.Processor
+	sweeper  *check.Sweeper
+	alertCh  chan alert.Alert
+}
+
+// buildEngine loads config and wires state, checks, and the worker pool. It does
+// not start a producer. Returns nil on config error (already logged).
+func buildEngine(zonesPath, patrolPath string) *engine {
 	zs, err := geo.LoadZones(zonesPath)
 	if err != nil {
 		log.Error().Err(err).Str("path", zonesPath).Msg("failed to load zones; engine not started")
-		return
+		return nil
 	}
 	patrols, err := geo.LoadPatrols(patrolPath)
 	if err != nil {
 		log.Error().Err(err).Str("path", patrolPath).Msg("failed to load patrols; engine not started")
-		return
+		return nil
 	}
 	grid := geo.NewGrid(zs, geo.CellDeg)
 	st := state.New()
@@ -92,7 +108,7 @@ func runEngine(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string, 
 	counters := alert.NewCounters()
 	ids := alert.NewIDGen()
 
-	// Alerts fire far faster than a human dashboard can read; forward them to a
+	// Alerts can fire faster than a human dashboard can read; forward them to a
 	// small buffered channel and drop when full. counters.Alerts stays exact;
 	// only the on-screen feed is sampled.
 	alertCh := make(chan alert.Alert, 256)
@@ -109,14 +125,54 @@ func runEngine(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string, 
 	pipe := ingest.New(counters, workers, workers*2)
 	pipe.Start(func() ingest.BatchHandler { return proc.NewWorker() })
 
-	msgs := gen.Firehose(total)
-	seedNames(cold, msgs)
-	log.Info().Int("messages", len(msgs)).Int("workers", workers).Int("patrols", len(patrols)).Msg("engine running on firehose")
+	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh}
+}
 
-	go broadcast(ctx, hub, counters, st, alertCh)
-	go runSweeper(ctx, sweeper)
-	pipe.RunFirehoseCtx(ctx, msgs)
-	pipe.Wait()
+// startTelemetry launches the metrics/alert broadcaster and the dark sweep.
+func (e *engine) startTelemetry(ctx context.Context, hub *api.Hub) {
+	go broadcast(ctx, hub, e.counters, e.st, e.alertCh)
+	go runSweeper(ctx, e.sweeper)
+}
+
+// runFirehose runs the engine against the in-memory firehose (Act 3).
+func runFirehose(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string, total int) {
+	e := buildEngine(zonesPath, patrolPath)
+	if e == nil {
+		return
+	}
+	msgs := gen.Firehose(total)
+	seedNames(e.cold, msgs)
+	log.Info().Int("messages", len(msgs)).Msg("engine running: firehose mode")
+	e.startTelemetry(ctx, hub)
+	e.pipe.RunFirehoseCtx(ctx, msgs)
+	e.pipe.Wait()
+}
+
+// runScenario runs the engine against a scripted scenario timeline (Act 2),
+// feeding messages through the 5ms-flush source path at demo rates.
+func runScenario(ctx context.Context, hub *api.Hub, zonesPath, patrolPath, scenarioPath string) {
+	sc, err := gen.LoadScenario(scenarioPath)
+	if err != nil {
+		log.Error().Err(err).Str("path", scenarioPath).Msg("failed to load scenario; engine not started")
+		return
+	}
+	e := buildEngine(zonesPath, patrolPath)
+	if e == nil {
+		return
+	}
+	for _, v := range sc.Vessels {
+		e.cold.SetName(v.MMSI, v.Name)
+	}
+	log.Info().Str("scenario", sc.Name).Int("frames", len(sc.Frames)).Msg("engine running: scenario mode")
+
+	e.startTelemetry(ctx, hub)
+	src := make(chan ingest.Message)
+	go func() {
+		sc.Play(ctx, src)
+		close(src)
+	}()
+	e.pipe.RunSource(src)
+	e.pipe.Wait()
 }
 
 // runSweeper runs the dark-event sweep on a 1s tick (detecting absence is
