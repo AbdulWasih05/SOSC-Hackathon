@@ -26,12 +26,15 @@ the stub currently prints the methodology header.)
 
 ```
 cd engine
-make emit-fake     # schema-valid alerts + metrics for the dashboard, no engine
-make run           # the real engine (websocket only until H4)
+make run           # real engine on the firehose (Act 3): alerts, metrics, positions
+make scenario      # scripted story (Act 2): zone, spoof, dark + intercept in sequence
+make emit-fake     # schema-valid alerts + metrics + positions, no engine (frontend dev)
 make test          # tests (table-driven coverage in check/ and geo/)
 ```
 
-Dashboard connects to the websocket at `ws://localhost:8080/ws`.
+Dashboard connects to the websocket at `ws://localhost:8080/ws`. The engine
+speaks three message types: `alert`, `metrics`, and `positions` (a GeoJSON
+FeatureCollection at up to 2/sec).
 
 ## Layout
 
