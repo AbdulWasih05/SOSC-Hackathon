@@ -1,6 +1,7 @@
+import { memo } from 'react'
 import { KIND_LABEL } from '../theme.js'
 
-export default function VesselDetails({ mmsi, alerts }) {
+function VesselDetails({ mmsi, alerts }) {
   if (!mmsi) return <div className="feed-empty">No vessel selected</div>
   
   const vesselAlerts = alerts.filter(a => a.mmsi === mmsi)
@@ -58,3 +59,5 @@ export default function VesselDetails({ mmsi, alerts }) {
     </div>
   )
 }
+
+export default memo(VesselDetails)

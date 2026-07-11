@@ -20,6 +20,11 @@ export default function App() {
     setAlerts((prev) => [a, ...prev].slice(0, 40))
     mapRef.current?.showAlert(a)
   }, [])
+  // Stable so memo(MapView) is not defeated by a fresh closure every render.
+  const onVesselClick = useCallback((mmsi) => {
+    setSelectedMMSI(mmsi)
+    setRightTab('vessel')
+  }, [])
 
   useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus }), [onAlert, onPositions])
 
@@ -62,10 +67,7 @@ export default function App() {
 
         {/* Center: Map */}
         <div className="map-container">
-          <MapView ref={mapRef} onVesselClick={(mmsi) => {
-            setSelectedMMSI(mmsi)
-            setRightTab('vessel')
-          }} />
+          <MapView ref={mapRef} onVesselClick={onVesselClick} />
           {status !== 'connected' && (
             <div className="map-notice">
               <div className="notice-icon">i</div>

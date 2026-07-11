@@ -1,9 +1,10 @@
+import { memo } from 'react'
 import { compact } from '../theme.js'
 
 // Engine stats panel rendered as a table in the right sidebar,
 // similar to the vessel details pane in the reference design.
 
-export default function Hud({ metrics }) {
+function Hud({ metrics }) {
   const m = metrics || {}
   return (
     <div className="panel hud-section">
@@ -51,3 +52,5 @@ export default function Hud({ metrics }) {
     </div>
   )
 }
+
+export default memo(Hud)

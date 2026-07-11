@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, memo, useEffect, useImperativeHandle, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import { HTTP_BASE } from '../ws.js'
 import { conePolygon, interceptLine } from './cone.js'
@@ -6,10 +6,12 @@ import { KIND_COLOR } from '../theme.js'
 
 // Offline style: no external tiles (the pitch runs on localhost with no venue
 // wifi). Zones and vessels are drawn as GeoJSON layers over a dark canvas.
+// Light nautical theme: water is a pale sea blue, land (added on load) is the
+// warm parchment tone, so the two read as distinct.
 const EMPTY_STYLE = {
   version: 8,
   sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#e6e2d3' } }],
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#bcd4de' } }],
 }
 
 const CENTER = [79.25, 9.0]
@@ -49,6 +51,10 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
   const linesRef = useRef(new Map())
   const onVesselClickRef = useRef(onVesselClick)
   onVesselClickRef.current = onVesselClick
+  // Highest-frequency path: vessel position frames. Coalesce them to at most one
+  // GeoJSON setData per animation frame so a burst never queues redundant work.
+  const pendingVesselsRef = useRef(null)
+  const rafRef = useRef(0)
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -67,8 +73,9 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
       // just a static GeoJSON bundled with the dashboard so land reads as land.
       try {
         map.addSource('land', { type: 'geojson', data: `${import.meta.env.BASE_URL}land.geojson` })
-        map.addLayer({ id: 'land-fill', type: 'fill', source: 'land', paint: { 'fill-color': '#141d33', 'fill-opacity': 0.85 } })
-        map.addLayer({ id: 'land-line', type: 'line', source: 'land', paint: { 'line-color': '#31425f', 'line-width': 0.8 } })
+        // Land is the warm parchment tone over the pale-blue sea background.
+        map.addLayer({ id: 'land-fill', type: 'fill', source: 'land', paint: { 'fill-color': '#e6e2d3', 'fill-opacity': 1 } })
+        map.addLayer({ id: 'land-line', type: 'line', source: 'land', paint: { 'line-color': '#c2b48f', 'line-width': 0.8 } })
       } catch {
         /* land is decorative; map still works without it */
       }
@@ -233,13 +240,24 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
 
     return () => {
       clearInterval(sweep)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
       map.remove()
     }
   }, [])
 
   useImperativeHandle(ref, () => ({
     setVessels(fc) {
-      if (readyRef.current) mapRef.current.getSource('vessels')?.setData(fc)
+      if (!readyRef.current) return
+      // Store the latest frame and flush on the next animation frame, collapsing
+      // any frames that arrive in between into a single setData.
+      pendingVesselsRef.current = fc
+      if (rafRef.current) return
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0
+        const fc = pendingVesselsRef.current
+        pendingVesselsRef.current = null
+        if (fc) mapRef.current?.getSource('vessels')?.setData(fc)
+      })
     },
     showAlert(a) {
       if (!readyRef.current) return
@@ -264,4 +282,4 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
   return <div className="map" ref={containerRef} />
 })
 
-export default MapView
+export default memo(MapView)

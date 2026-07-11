@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { KIND_COLOR, KIND_LABEL } from '../theme.js'
 
 function detailLine(a) {
@@ -39,7 +40,7 @@ function Row({ a }) {
   )
 }
 
-export default function AlertFeed({ alerts }) {
+function AlertFeed({ alerts }) {
   return (
     <div className="panel feed">
       <div className="panel-header">
@@ -58,3 +59,5 @@ export default function AlertFeed({ alerts }) {
     </div>
   )
 }
+
+export default memo(AlertFeed)
