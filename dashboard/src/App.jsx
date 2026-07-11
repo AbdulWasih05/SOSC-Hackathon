@@ -21,7 +21,20 @@ export default function App() {
 
   const onPositions = useCallback((fc) => mapRef.current?.setVessels(fc), [])
   const onAlert = useCallback((a) => {
-    setAlerts((prev) => [a, ...prev].slice(0, 40))
+    setAlerts((prev) => {
+      const next = [a, ...prev]
+      const kept = []
+      let otherCount = 0
+      for (const item of next) {
+        if (item.severity === 'HIGH' || item.severity === 'CRITICAL') {
+          kept.push(item)
+        } else if (otherCount < 40) {
+          kept.push(item)
+          otherCount++
+        }
+      }
+      return kept
+    })
     mapRef.current?.showAlert(a)
   }, [])
   // Stable so memo(MapView) is not defeated by a fresh closure every render.

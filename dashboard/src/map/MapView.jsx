@@ -308,9 +308,10 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
       if (!readyRef.current) return
       const now = Date.now()
       const color = KIND_COLOR[a.kind] || '#5b6b82'
+      const isHighOrCrit = a.severity === 'HIGH' || a.severity === 'CRITICAL'
       flagsRef.current.set(a.mmsi, {
         feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { color, mmsi: a.mmsi } },
-        expires: now + FLAG_TTL_MS,
+        expires: isHighOrCrit ? Infinity : now + FLAG_TTL_MS,
       })
       if (a.cone) {
         conesRef.current.set(a.id, { feature: conePolygon(a.cone, a.id), expires: now + CONE_TTL_MS })
