@@ -63,7 +63,7 @@ function AlertFeed({ alerts, onAlertClick }) {
   const [tab, setTab] = useState('alerts')
 
   const alertItems = alerts.filter((a) => ALERT_SEVERITIES.has(a.severity))
-  const logItems   = alerts.filter((a) => !ALERT_SEVERITIES.has(a.severity))
+  const logItems   = alerts  // Logs = full audit trail of every event
   const active     = tab === 'alerts' ? alertItems : logItems
 
   return (

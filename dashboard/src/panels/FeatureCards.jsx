@@ -11,7 +11,9 @@ function FeatureCards({ metrics, alerts }) {
   const activeNum = m.active_vessels ?? 0
   const processedNum = m.processed_total ?? 0
   const droppedNum = m.dropped_total ?? 0
-  const alertsNum = m.alerts_total ?? 0
+
+  // Only HIGH and CRITICAL count as "Alerts" — MEDIUM/LOW are logs, not alerts.
+  const alertsNum = alerts.filter((a) => a.severity === 'HIGH' || a.severity === 'CRITICAL').length
 
   // Derive threat level from alerts
   const recentCritical = alerts.filter((a) => a.severity === 'CRITICAL').length
@@ -43,12 +45,12 @@ function FeatureCards({ metrics, alerts }) {
         </div>
       </div>
 
-      {/* Card 3: Alerts Fired */}
+      {/* Card 3: Alerts Fired (HIGH + CRITICAL only) */}
       <div className="feature-card">
         <div className="card-title">Alerts Fired</div>
         <div className="card-value">{compact(alertsNum)}</div>
         <div className="card-sub">
-          <span className="unit">total detections</span>
+          <span className="unit">high · critical only</span>
         </div>
       </div>
 
