@@ -13,11 +13,26 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [3.62, 51.58],
-            [4.05, 51.58],
-            [4.05, 51.95],
-            [3.62, 51.95],
-            [3.62, 51.58]
+            [
+              3.62,
+              51.58
+            ],
+            [
+              4.05,
+              51.58
+            ],
+            [
+              4.05,
+              51.95
+            ],
+            [
+              3.62,
+              51.95
+            ],
+            [
+              3.62,
+              51.58
+            ]
           ]
         ]
       }
@@ -33,11 +48,26 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [4.00, 52.18],
-            [4.32, 52.18],
-            [4.32, 52.42],
-            [4.00, 52.42],
-            [4.00, 52.18]
+            [
+              4,
+              52.18
+            ],
+            [
+              4.32,
+              52.18
+            ],
+            [
+              4.32,
+              52.42
+            ],
+            [
+              4,
+              52.42
+            ],
+            [
+              4,
+              52.18
+            ]
           ]
         ]
       }
@@ -54,11 +84,306 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [2.00, 51.00],
-            [3.55, 51.00],
-            [3.55, 52.60],
-            [2.00, 52.60],
-            [2.00, 51.00]
+            [
+              2,
+              51
+            ],
+            [
+              3.55,
+              51
+            ],
+            [
+              3.55,
+              52.6
+            ],
+            [
+              2,
+              52.6
+            ],
+            [
+              2,
+              51
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-kh",
+        "name": "IUU Red Card - Cambodia",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              102.3338282,
+              9.4110961
+            ],
+            [
+              107.6312258,
+              9.4110961
+            ],
+            [
+              107.6312258,
+              14.6903133
+            ],
+            [
+              102.3338282,
+              14.6903133
+            ],
+            [
+              102.3338282,
+              9.4110961
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-km",
+        "name": "IUU Red Card - Comoros",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              42.8262181,
+              -12.9854371
+            ],
+            [
+              44.9730591,
+              -12.9854371
+            ],
+            [
+              44.9730591,
+              -11.1624399
+            ],
+            [
+              42.8262181,
+              -11.1624399
+            ],
+            [
+              42.8262181,
+              -12.9854371
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-vc",
+        "name": "IUU Red Card - Saint Vincent and the Grenadines",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -61.6645712,
+              12.3983584
+            ],
+            [
+              -60.9087552,
+              12.3983584
+            ],
+            [
+              -60.9087552,
+              13.5843008
+            ],
+            [
+              -61.6645712,
+              13.5843008
+            ],
+            [
+              -61.6645712,
+              12.3983584
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-cm",
+        "name": "IUU Red Card - Cameroon",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              8.3822176,
+              1.6517945
+            ],
+            [
+              16.1911011,
+              1.6517945
+            ],
+            [
+              16.1911011,
+              13.083333
+            ],
+            [
+              8.3822176,
+              13.083333
+            ],
+            [
+              8.3822176,
+              1.6517945
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-gbr",
+        "name": "Great Barrier Reef Marine Park",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              142,
+              -24
+            ],
+            [
+              154,
+              -24
+            ],
+            [
+              154,
+              -10
+            ],
+            [
+              142,
+              -10
+            ],
+            [
+              142,
+              -24
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-papahanaumokuakea",
+        "name": "Papahānaumokuākea Marine National Monument",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -179,
+              22
+            ],
+            [
+              -161,
+              22
+            ],
+            [
+              -161,
+              30
+            ],
+            [
+              -179,
+              30
+            ],
+            [
+              -179,
+              22
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-galapagos",
+        "name": "Galápagos Marine Reserve",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -93,
+              -2
+            ],
+            [
+              -88,
+              -2
+            ],
+            [
+              -88,
+              2
+            ],
+            [
+              -93,
+              2
+            ],
+            [
+              -93,
+              -2
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-chagos",
+        "name": "Chagos Marine Protected Area",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              70,
+              -8
+            ],
+            [
+              73,
+              -8
+            ],
+            [
+              73,
+              -4
+            ],
+            [
+              70,
+              -4
+            ],
+            [
+              70,
+              -8
+            ]
           ]
         ]
       }

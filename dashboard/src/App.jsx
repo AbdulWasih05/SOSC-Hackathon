@@ -64,12 +64,12 @@ export default function App() {
       {/* ── Top Header Bar ── */}
       <header className="topbar">
         <div className="brand">
-          <div className="brand-icon">PW</div>
-          Palk Watch
+          <img src="/logo.png" alt="Reef Watchers" className="brand-icon" style={{ width: '28px', height: '28px', marginRight: '12px', objectFit: 'contain' }} />
+          Reef Watchers
         </div>
         <div className="topbar-sep" />
         <div className="topbar-meta">
-          <span className="topbar-route">Palk Strait · Gulf of Mannar</span>
+          <span className="topbar-route">Current Location: Palk Strait · Gulf of Mannar</span>
           <span className="topbar-tag">Real-Time Engine</span>
           <span className="topbar-tag">AIS Surveillance</span>
         </div>

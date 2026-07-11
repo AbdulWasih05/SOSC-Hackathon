@@ -7,18 +7,139 @@
       "properties": {
         "id": "gulf-of-mannar-mnp",
         "name": "Gulf of Mannar Marine National Park",
-        "type": "mpa"
+        "type": "ecological-zone"
       },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
-            [79.00, 8.90],
-            [79.30, 8.90],
-            [79.40, 9.20],
-            [79.10, 9.30],
-            [78.90, 9.10],
-            [79.00, 8.90]
+            [
+              78.1333,
+              8.5833
+            ],
+            [
+              79.5,
+              8.5833
+            ],
+            [
+              79.5,
+              9.4167
+            ],
+            [
+              78.1333,
+              9.4167
+            ],
+            [
+              78.1333,
+              8.5833
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "coral-reef-1",
+        "name": "Palk Bay Coral Reefs",
+        "type": "coral-reef"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.1333,
+              9.25
+            ],
+            [
+              79.2833,
+              9.25
+            ],
+            [
+              79.2833,
+              9.3
+            ],
+            [
+              79.1333,
+              9.3
+            ],
+            [
+              79.1333,
+              9.25
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned",
+        "name": "No-Take Fishing Zone",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              79.15,
+              9.26
+            ],
+            [
+              79.26,
+              9.26
+            ],
+            [
+              79.26,
+              9.29
+            ],
+            [
+              79.15,
+              9.29
+            ],
+            [
+              79.15,
+              9.26
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "international-water",
+        "name": "International Waters",
+        "type": "international-water"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            80.05,
+            10.0833
+          ],
+          [
+            79.5833,
+            9.95
+          ],
+          [
+            79.3767,
+            9.6692
+          ],
+          [
+            79.5117,
+            9.3633
+          ],
+          [
+            79.5333,
+            9.2167
+          ],
+          [
+            79.5333,
+            9.1
           ]
         ]
       }
@@ -27,7 +148,7 @@
       "type": "Feature",
       "properties": {
         "id": "india-eez",
-        "name": "Indian EEZ (Palk Strait / Gulf of Mannar segment)",
+        "name": "Indian EEZ",
         "type": "eez",
         "country": "IN"
       },
@@ -35,12 +156,30 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [78.00, 8.50],
-            [79.50, 8.50],
-            [79.60, 9.50],
-            [79.30, 10.00],
-            [78.00, 10.00],
-            [78.00, 8.50]
+            [
+              78,
+              8.5
+            ],
+            [
+              79.5,
+              8.5
+            ],
+            [
+              79.6,
+              9.5
+            ],
+            [
+              79.3,
+              10
+            ],
+            [
+              78,
+              10
+            ],
+            [
+              78,
+              8.5
+            ]
           ]
         ]
       }
@@ -49,7 +188,7 @@
       "type": "Feature",
       "properties": {
         "id": "sri-lanka-eez",
-        "name": "Sri Lankan EEZ (Palk Strait / Gulf of Mannar segment)",
+        "name": "Sri Lankan EEZ",
         "type": "eez",
         "country": "LK"
       },
@@ -57,11 +196,306 @@
         "type": "Polygon",
         "coordinates": [
           [
-            [79.50, 8.50],
-            [81.00, 8.50],
-            [81.00, 10.00],
-            [79.60, 9.50],
-            [79.50, 8.50]
+            [
+              79.5,
+              8.5
+            ],
+            [
+              81,
+              8.5
+            ],
+            [
+              81,
+              10
+            ],
+            [
+              79.6,
+              9.5
+            ],
+            [
+              79.5,
+              8.5
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-kh",
+        "name": "IUU Red Card - Cambodia",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              102.3338282,
+              9.4110961
+            ],
+            [
+              107.6312258,
+              9.4110961
+            ],
+            [
+              107.6312258,
+              14.6903133
+            ],
+            [
+              102.3338282,
+              14.6903133
+            ],
+            [
+              102.3338282,
+              9.4110961
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-km",
+        "name": "IUU Red Card - Comoros",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              42.8262181,
+              -12.9854371
+            ],
+            [
+              44.9730591,
+              -12.9854371
+            ],
+            [
+              44.9730591,
+              -11.1624399
+            ],
+            [
+              42.8262181,
+              -11.1624399
+            ],
+            [
+              42.8262181,
+              -12.9854371
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-vc",
+        "name": "IUU Red Card - Saint Vincent and the Grenadines",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -61.6645712,
+              12.3983584
+            ],
+            [
+              -60.9087552,
+              12.3983584
+            ],
+            [
+              -60.9087552,
+              13.5843008
+            ],
+            [
+              -61.6645712,
+              13.5843008
+            ],
+            [
+              -61.6645712,
+              12.3983584
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned-cm",
+        "name": "IUU Red Card - Cameroon",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              8.3822176,
+              1.6517945
+            ],
+            [
+              16.1911011,
+              1.6517945
+            ],
+            [
+              16.1911011,
+              13.083333
+            ],
+            [
+              8.3822176,
+              13.083333
+            ],
+            [
+              8.3822176,
+              1.6517945
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-gbr",
+        "name": "Great Barrier Reef Marine Park",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              142,
+              -24
+            ],
+            [
+              154,
+              -24
+            ],
+            [
+              154,
+              -10
+            ],
+            [
+              142,
+              -10
+            ],
+            [
+              142,
+              -24
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-papahanaumokuakea",
+        "name": "Papahānaumokuākea Marine National Monument",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -179,
+              22
+            ],
+            [
+              -161,
+              22
+            ],
+            [
+              -161,
+              30
+            ],
+            [
+              -179,
+              30
+            ],
+            [
+              -179,
+              22
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-galapagos",
+        "name": "Galápagos Marine Reserve",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -93,
+              -2
+            ],
+            [
+              -88,
+              -2
+            ],
+            [
+              -88,
+              2
+            ],
+            [
+              -93,
+              2
+            ],
+            [
+              -93,
+              -2
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "mpa-chagos",
+        "name": "Chagos Marine Protected Area",
+        "type": "ecological-zone"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              70,
+              -8
+            ],
+            [
+              73,
+              -8
+            ],
+            [
+              73,
+              -4
+            ],
+            [
+              70,
+              -4
+            ],
+            [
+              70,
+              -8
+            ]
           ]
         ]
       }
