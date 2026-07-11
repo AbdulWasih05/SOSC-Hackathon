@@ -11,6 +11,15 @@ node_modules/
 dashboard/dist/
 dashboard/.vite/
 
+# Secrets (aisstream.io API key lives here, never commit)
+.env
+*.env
+!*.env.example
+
+# Large AIS datasets (multi-GB demo data; keep out of git)
+*.csv
+engine/data/aisdk-*.csv
+
 # Editor / OS
 .DS_Store
 .idea/

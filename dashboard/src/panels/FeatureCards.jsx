@@ -1,10 +1,11 @@
+import { memo } from 'react'
 import { compact } from '../theme.js'
 
 // 6 feature summary cards displayed across the top, mirroring the
 // efficiency / compliance card row in vessel monitoring platforms.
 // Cards show KPIs derived from the live metrics and alert count.
 
-export default function FeatureCards({ metrics, alerts }) {
+function FeatureCards({ metrics, alerts }) {
   const m = metrics || {}
   const rateNum = m.rate_per_s ?? 0
   const activeNum = m.active_vessels ?? 0
@@ -81,3 +82,5 @@ export default function FeatureCards({ metrics, alerts }) {
     </div>
   )
 }
+
+export default memo(FeatureCards)

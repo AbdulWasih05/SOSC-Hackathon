@@ -1,6 +1,6 @@
 {
   "name": "gulf-of-mannar-demo",
-  "description": "Act 2 scripted story. Frame t_ms are realistic AIS event times (vessels report every 60-300s), so implied speeds are honest and only the intended spoof teleports. 'speed' compresses playback wall-clock (60x here) so the action reads on stage; it does NOT compress the dark-event silence threshold, which is real wall-clock (6x expected interval ~ 60s for an 8kn vessel). Beats: Ghost teleports (spoof, ~2s), Meen Rani crosses into the MPA (zone, ~10s), Kadal Selvi goes dark 1.5nm from the MPA and the cone + intercept bloom at the silence threshold (~60s after its last fix). Non-dark vessels anchor (speed <= 1kn) so only Kadal Selvi goes dark.",
+  "description": "Act 2 scripted story, tuned for the risk engine (P0). KADAL SELVI is the protagonist: it crosses into the Marine National Park (ZONE, +30), teleports once (SPOOF, +15), then goes dark repeatedly near the park (DARK, +15 then +10 each). Its risk score climbs LOW to ELEVATED to HIGH (fires ILLEGAL_FISHING_SUSPECTED) to CRITICAL (fires BOARDING_RECOMMENDED with intercepts). Watch the evidence accumulate. 'speed' compresses playback wall-clock 60x; frame t_ms are event times, so implied speeds are honest and only the intended teleport trips the spoof check. KADAL SELVI moves at 25kn (2s expected interval), so the 6x dark threshold is ~12s of silence, letting several dark episodes land inside the demo window. MEEN RANI (single zone violation) and GHOST (single spoof) stay LOW as background. Non-protagonist vessels anchor (speed <= 1kn) so only KADAL SELVI goes dark.",
   "speed": 60.0,
   "vessels": [
     { "mmsi": 419001111, "name": "MEEN RANI", "flag": "IN" },
@@ -8,15 +8,19 @@
     { "mmsi": 419002222, "name": "KADAL SELVI", "flag": "IN" }
   ],
   "frames": [
-    { "t_ms": 0,      "mmsi": 419002222, "lat": 8.8700, "lon": 79.10, "speed_kn": 8,   "heading_deg": 0 },
-    { "t_ms": 0,      "mmsi": 419001111, "lat": 8.8800, "lon": 79.15, "speed_kn": 9,   "heading_deg": 0 },
-    { "t_ms": 60000,  "mmsi": 412009999, "lat": 9.0000, "lon": 79.30, "speed_kn": 12,  "heading_deg": 90 },
-    { "t_ms": 60000,  "mmsi": 419002222, "lat": 8.8722, "lon": 79.10, "speed_kn": 8,   "heading_deg": 0 },
-    { "t_ms": 120000, "mmsi": 412009999, "lat": 9.5000, "lon": 79.90, "speed_kn": 12,  "heading_deg": 90 },
-    { "t_ms": 120000, "mmsi": 419002222, "lat": 8.8744, "lon": 79.10, "speed_kn": 8,   "heading_deg": 0 },
-    { "t_ms": 180000, "mmsi": 412009999, "lat": 9.5100, "lon": 79.90, "speed_kn": 0.5, "heading_deg": 90 },
-    { "t_ms": 300000, "mmsi": 419001111, "lat": 8.8925, "lon": 79.15, "speed_kn": 9,   "heading_deg": 0 },
-    { "t_ms": 600000, "mmsi": 419001111, "lat": 8.9050, "lon": 79.15, "speed_kn": 9,   "heading_deg": 0 },
-    { "t_ms": 660000, "mmsi": 419001111, "lat": 8.9065, "lon": 79.15, "speed_kn": 0.5, "heading_deg": 0 }
+    { "t_ms": 0,       "mmsi": 419002222, "lat": 8.885, "lon": 79.15, "speed_kn": 25,  "heading_deg": 20 },
+    { "t_ms": 60000,   "mmsi": 412009999, "lat": 9.10,  "lon": 79.70, "speed_kn": 12,  "heading_deg": 90 },
+    { "t_ms": 120000,  "mmsi": 412009999, "lat": 9.55,  "lon": 80.20, "speed_kn": 12,  "heading_deg": 90 },
+    { "t_ms": 173000,  "mmsi": 419002222, "lat": 8.905, "lon": 79.15, "speed_kn": 25,  "heading_deg": 20 },
+    { "t_ms": 180000,  "mmsi": 419002222, "lat": 9.20,  "lon": 79.15, "speed_kn": 25,  "heading_deg": 20 },
+    { "t_ms": 180000,  "mmsi": 412009999, "lat": 9.56,  "lon": 80.20, "speed_kn": 0.5, "heading_deg": 90 },
+    { "t_ms": 300000,  "mmsi": 419002222, "lat": 9.19,  "lon": 79.15, "speed_kn": 25,  "heading_deg": 200 },
+    { "t_ms": 960000,  "mmsi": 419001111, "lat": 8.88,  "lon": 79.20, "speed_kn": 9,   "heading_deg": 0 },
+    { "t_ms": 1200000, "mmsi": 419002222, "lat": 9.18,  "lon": 79.15, "speed_kn": 25,  "heading_deg": 200 },
+    { "t_ms": 1560000, "mmsi": 419001111, "lat": 8.92,  "lon": 79.20, "speed_kn": 9,   "heading_deg": 0 },
+    { "t_ms": 2100000, "mmsi": 419002222, "lat": 9.17,  "lon": 79.15, "speed_kn": 25,  "heading_deg": 200 },
+    { "t_ms": 2400000, "mmsi": 419001111, "lat": 8.925, "lon": 79.20, "speed_kn": 0.5, "heading_deg": 0 },
+    { "t_ms": 3000000, "mmsi": 419002222, "lat": 9.16,  "lon": 79.15, "speed_kn": 25,  "heading_deg": 200 },
+    { "t_ms": 3900000, "mmsi": 419002222, "lat": 9.15,  "lon": 79.15, "speed_kn": 25,  "heading_deg": 200 }
   ]
 }

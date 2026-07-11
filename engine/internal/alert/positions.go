@@ -30,11 +30,17 @@ type Geometry struct {
 	Coordinates [2]float64 `json:"coordinates"`
 }
 
-// VesselProps are the per-vessel properties the map layer needs.
+// VesselProps are the per-vessel properties the map layer needs. RiskScore,
+// RiskTier and Factors are additive risk-engine fields (omitempty): they are set
+// only for scored vessels when the risk engine is on, so the map colors dots by
+// tier and the Score Breakdown Drawer reads factors without a separate endpoint.
 type VesselProps struct {
-	MMSI       uint32  `json:"mmsi"`
-	SpeedKn    float32 `json:"speed_kn"`
-	HeadingDeg float32 `json:"heading_deg"`
+	MMSI       uint32   `json:"mmsi"`
+	SpeedKn    float32  `json:"speed_kn"`
+	HeadingDeg float32  `json:"heading_deg"`
+	RiskScore  int      `json:"risk_score,omitempty"`
+	RiskTier   string   `json:"risk_tier,omitempty"`
+	Factors    []Factor `json:"factors,omitempty"`
 }
 
 // NewFeature builds a point feature for a vessel.

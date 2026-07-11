@@ -1,7 +1,12 @@
-// Command palkwatch is the single Palk Watch binary. With -fake it runs the H1
-// contract emitter. Otherwise it runs the real engine: firehose -> ingest ->
-// state -> inline checks (geofence, spoof) -> alert bus, broadcasting metrics
-// once per second and alerts as they fire over the dashboard websocket.
+// Command palkwatch is the single Palk Watch binary. The producer is swappable;
+// the engine is the same everywhere. Modes: -csv replays a recorded Danish AIS
+// (aisdk) file (the offline demo: real data, reproducible, no network); the
+// default runs the live aisstream.io feed (North Sea); -firehose runs the
+// in-memory stress feed (the 50k benchmark theatre); -scenario plays a scripted
+// timeline; -fake runs the contract emitter with no engine. Every mode feeds the
+// same pipeline: ingest -> state -> inline checks (geofence, spoof) -> alert bus,
+// plus the 1s dark sweep, broadcasting metrics once per second and alerts as they
+// fire over the dashboard websocket.
 package main
 
 import (
@@ -24,25 +29,65 @@ import (
 	"palkwatch/internal/gen"
 	"palkwatch/internal/geo"
 	"palkwatch/internal/ingest"
+	"palkwatch/internal/risk"
 	"palkwatch/internal/state"
 )
+
+// riskEnabled turns on the IUU risk-scoring engine (P0). Off by default: with it
+// off, the build is byte-for-byte the pre-risk behavior (no factor recording, no
+// risk sweep, no risk fields on the wire). Set by the -risk flag.
+var riskEnabled bool
 
 func main() {
 	var (
 		fake     bool
+		firehose bool
 		addr     string
 		zones    string
 		patrol   string
 		scenario string
+		csv      string
+		speed    float64
 		total    int
 	)
 	flag.BoolVar(&fake, "fake", false, "run the contract emitter (schema-valid alerts + metrics, no real engine)")
+	flag.BoolVar(&firehose, "firehose", false, "run the in-memory firehose (Act 3 stress feed) instead of the live feed")
 	flag.StringVar(&addr, "addr", ":8080", "http listen address for the dashboard websocket")
-	flag.StringVar(&zones, "zones", "data/zones.geojson", "zone geojson path")
-	flag.StringVar(&patrol, "patrol", "data/patrol.json", "patrol config path")
-	flag.StringVar(&scenario, "scenario", "", "scenario json path (empty = firehose mode)")
+	flag.StringVar(&zones, "zones", "", "zone geojson path (default follows the mode's region)")
+	flag.StringVar(&patrol, "patrol", "", "patrol config path (default follows the mode's region)")
+	flag.StringVar(&scenario, "scenario", "", "scenario json path (selects scenario mode)")
+	flag.StringVar(&csv, "csv", "", "aisdk CSV path to replay (selects the recorded-data demo mode)")
+	flag.Float64Var(&speed, "speed", 30, "aisdk replay speed (event seconds per wall second)")
 	flag.IntVar(&total, "n", 1_000_000, "firehose messages pre-generated and looped")
+	flag.BoolVar(&riskEnabled, "risk", false, "enable the IUU risk-scoring engine (5s sweep, tier alerts, risk fields on the wire)")
 	flag.Parse()
+
+	// Mode selection (precedence): -fake, -scenario, -csv, -firehose, else the
+	// default live aisstream.io feed. Zone/patrol defaults follow the mode region:
+	// Denmark for the CSV replay, North Sea for the live feed, Gulf of Mannar for
+	// the scripted scenario / firehose.
+	csvMode := csv != ""
+	live := !firehose && !fake && !csvMode && scenario == ""
+	if zones == "" {
+		switch {
+		case csvMode:
+			zones = "data/zones-denmark.geojson"
+		case live:
+			zones = "data/zones-northsea.geojson"
+		default:
+			zones = "data/zones.geojson"
+		}
+	}
+	if patrol == "" {
+		switch {
+		case csvMode:
+			patrol = "data/patrol-denmark.json"
+		case live:
+			patrol = "data/patrol-northsea.json"
+		default:
+			patrol = "data/patrol.json"
+		}
+	}
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
@@ -71,8 +116,12 @@ func main() {
 		go gen.RunFake(ctx, hub)
 	case scenario != "":
 		go runScenario(ctx, hub, zones, patrol, scenario)
-	default:
+	case csvMode:
+		go runAISDK(ctx, hub, zones, patrol, csv, speed)
+	case firehose:
 		go runFirehose(ctx, hub, zones, patrol, total)
+	default:
+		go runLive(ctx, hub, zones, patrol)
 	}
 
 	<-ctx.Done()
@@ -94,13 +143,15 @@ func serveJSONFile(path string) http.HandlerFunc {
 
 // engine bundles the built pieces shared by firehose and scenario modes.
 type engine struct {
-	st       *state.Shards
-	cold     *state.Cold
-	counters *alert.Counters
-	pipe     *ingest.Pipeline
-	proc     *check.Processor
-	sweeper  *check.Sweeper
-	alertCh  chan alert.Alert
+	st          *state.Shards
+	cold        *state.Cold
+	counters    *alert.Counters
+	pipe        *ingest.Pipeline
+	proc        *check.Processor
+	sweeper     *check.Sweeper
+	alertCh     chan alert.Alert
+	store       *risk.Store    // nil unless the risk engine is on
+	riskSweeper *risk.Sweeper  // nil unless the risk engine is on
 }
 
 // buildEngine loads config and wires state, checks, and the worker pool. It does
@@ -135,19 +186,51 @@ func buildEngine(zonesPath, patrolPath string) *engine {
 	proc := check.NewProcessor(st, cold, grid, counters, ids, sink)
 	sweeper := check.NewSweeper(st, cold, zs, patrols, counters, ids, sink)
 
+	// Risk engine (P0): wire the factor recorder into the inline checks and the
+	// dark sweep, and build the 5s risk sweeper. All of this is skipped when the
+	// risk engine is off, so the pre-risk hot path and wire format are unchanged.
+	var store *risk.Store
+	var riskSweeper *risk.Sweeper
+	if riskEnabled {
+		store = risk.NewStore()
+		proc.SetRisk(store)
+		sweeper.SetRisk(store)
+		riskSweeper = risk.NewSweeper(store, st, cold, patrols, counters, ids, sink)
+		log.Info().Msg("risk engine on: 5s IUU scoring sweep, tier-transition alerts")
+	}
+
 	workers := runtime.GOMAXPROCS(0)
 	pipe := ingest.New(counters, workers, workers*2)
 	pipe.Start(func() ingest.BatchHandler { return proc.NewWorker() })
 
-	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh}
+	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh, store: store, riskSweeper: riskSweeper}
 }
 
 // startTelemetry launches the metrics/alert broadcaster, the vessel position
 // feed, and the dark sweep.
 func (e *engine) startTelemetry(ctx context.Context, hub *api.Hub) {
 	go broadcast(ctx, hub, e.counters, e.st, e.alertCh)
-	go broadcastPositions(ctx, hub, e.st)
+	go broadcastPositions(ctx, hub, e.st, e.store)
 	go runSweeper(ctx, e.sweeper)
+	if e.riskSweeper != nil {
+		go runRiskSweeper(ctx, e.riskSweeper)
+	}
+}
+
+// runRiskSweeper scores the active set every 5 seconds (P0). Scoring is a
+// judgment cycle by design, not a per-message reflex; the tick cadence is the
+// scoring latency and is never presented as a millisecond alert.
+func runRiskSweeper(ctx context.Context, rs *risk.Sweeper) {
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			rs.Tick(time.Now().UnixMilli())
+		}
+	}
 }
 
 // runFirehose runs the engine against the in-memory firehose (Act 3).
@@ -191,6 +274,74 @@ func runScenario(ctx context.Context, hub *api.Hub, zonesPath, patrolPath, scena
 	e.pipe.Wait()
 }
 
+// northSeaBox is the aisstream.io subscription bounding box for the live feed:
+// the Dutch / southern North Sea, where community AIS coverage is densest.
+// aisstream orders coordinates [lat, lon] (not GeoJSON order).
+var northSeaBox = [][]float64{{51.0, 2.0}, {54.0, 7.0}}
+
+// runLive runs the engine against the live aisstream.io feed. Real vessels flow
+// through the same ingest -> checks -> alert path as the synthetic modes; the
+// only difference is the producer. Volume is a real regional rate (tens/sec),
+// far below the firehose; the 50k throughput floor is proven by the benchmark,
+// not this mode.
+func runLive(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string) {
+	key := gen.LoadAPIKey()
+	if key == "" {
+		log.Error().Msg("no aisstream.io API key found; set APIKey=... in engine/.env or export AISSTREAM_API_KEY. Falling back requires -firehose, -scenario, or -fake.")
+		return
+	}
+	e := buildEngine(zonesPath, patrolPath)
+	if e == nil {
+		return
+	}
+	// Real AIS coverage is gappy; raise the dark-event silence threshold to 10x
+	// so ordinary gaps do not masquerade as dark events (CLAUDE.md).
+	e.sweeper.SetSilenceMultiplier(check.RealFeedSilenceMultiplier)
+	log.Info().Str("region", "Dutch / southern North Sea").Msg("engine running: live aisstream.io feed")
+
+	e.startTelemetry(ctx, hub)
+	src := make(chan ingest.Message, 256)
+	go func() {
+		gen.RunLive(ctx, gen.LiveConfig{APIKey: key, BoundingBox: northSeaBox}, src, e.cold.SetName)
+		close(src)
+	}()
+	e.pipe.RunSource(src)
+	e.pipe.Wait()
+}
+
+// runAISDK runs the engine against a recorded Danish AIS CSV (the offline demo:
+// real data, reproducible, no network). Same pipeline as every other mode; the
+// producer streams and replays the file on a compressed event-time schedule.
+func runAISDK(ctx context.Context, hub *api.Hub, zonesPath, patrolPath, csvPath string, speed float64) {
+	e := buildEngine(zonesPath, patrolPath)
+	if e == nil {
+		return
+	}
+	// Replay compresses event time by `speed`, but the sweeper measures silence in
+	// wall time. Scale the silence multiplier by 1/speed so a dark event still
+	// means "silent for 10x the expected reporting interval in EVENT time" (what
+	// "stopped transmitting" means in the recording), independent of playback
+	// speed. Floor it so the wall-clock threshold stays above roughly one sweep
+	// tick for the fastest speed class.
+	effMult := check.RealFeedSilenceMultiplier / speed
+	if effMult < 0.2 {
+		effMult = 0.2
+	}
+	e.sweeper.SetSilenceMultiplier(effMult)
+	log.Info().Str("file", csvPath).Float64("speed", speed).Float64("dark_mult", effMult).Msg("engine running: aisdk CSV replay")
+
+	e.startTelemetry(ctx, hub)
+	src := make(chan ingest.Message, 1024)
+	go func() {
+		if err := gen.RunAISDK(ctx, gen.AISDKConfig{Path: csvPath, Speed: speed}, src, e.cold.SetName); err != nil && ctx.Err() == nil {
+			log.Error().Err(err).Str("file", csvPath).Msg("aisdk replay failed")
+		}
+		close(src)
+	}()
+	e.pipe.RunSource(src)
+	e.pipe.Wait()
+}
+
 // runSweeper runs the dark-event sweep on a 1s tick (detecting absence is
 // sweep-based by definition; never an inline millisecond claim).
 func runSweeper(ctx context.Context, sweeper *check.Sweeper) {
@@ -211,7 +362,7 @@ func runSweeper(ctx context.Context, sweeper *check.Sweeper) {
 // the firehose the table has ~100k vessels, far more than a map can draw, so it
 // sends a stable MMSI-strided sample plus every alert-runner vessel; in scenario
 // mode the handful of vessels are all sent. Names are omitted (rule 1).
-func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards) {
+func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards, store *risk.Store) {
 	const maxVessels = 3000
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -227,10 +378,22 @@ func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards) {
 			}
 			feats := make([]alert.Feature, 0, maxVessels+64)
 			st.ForEach(func(mmsi uint32, v state.VesselState) {
-				if stride > 1 && mmsi%stride != 0 && mmsi < 420000000 {
+				f := alert.NewFeature(mmsi, v.LastLat, v.LastLon, v.SpeedKn, v.HeadingDeg)
+				scored := false
+				if store != nil {
+					if sc, tier, factors, ok := store.Snapshot(mmsi); ok {
+						f.Properties.RiskScore = sc
+						f.Properties.RiskTier = tier
+						f.Properties.Factors = factors
+						scored = true
+					}
+				}
+				// Scored vessels are always sent (they are the point of the map);
+				// otherwise the stride sample and alert-runner rule apply.
+				if !scored && stride > 1 && mmsi%stride != 0 && mmsi < 420000000 {
 					return
 				}
-				feats = append(feats, alert.NewFeature(mmsi, v.LastLat, v.LastLon, v.SpeedKn, v.HeadingDeg))
+				feats = append(feats, f)
 			})
 			hub.Broadcast(alert.PositionMsg{
 				Type: "positions",
@@ -242,12 +405,18 @@ func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards) {
 
 // broadcast emits a metrics frame every second (rate = messages in the last
 // second) and forwards alerts as they arrive, capped per second so the feed
-// stays readable.
+// stays readable. It also dedups the on-screen feed per (vessel, kind): real AIS
+// carries duplicate MMSIs and GPS-glitch fixes that legitimately trip the spoof
+// check many times for one vessel, and a live ops feed would collapse those into
+// one row. The engine's alert counter still counts every detection; only the
+// visible feed is deduped.
 func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *state.Shards, alertCh <-chan alert.Alert) {
 	const alertsPerSecCap = 25
+	const feedCooldownMs = 20_000
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
+	lastShown := make(map[uint64]int64) // (mmsi<<2 | kindCode) -> wall ms last shown
 	var lastIngested uint64
 	sent := 0
 	for {
@@ -255,7 +424,13 @@ func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *
 		case <-ctx.Done():
 			return
 		case a := <-alertCh:
+			key := uint64(a.MMSI)<<3 | uint64(feedKindCode(a.Kind))
+			nowMs := time.Now().UnixMilli()
+			if last, ok := lastShown[key]; ok && nowMs-last < feedCooldownMs {
+				continue // shown recently; engine already counted it
+			}
 			if sent < alertsPerSecCap {
+				lastShown[key] = nowMs
 				hub.Broadcast(alert.Envelope{Type: "alert", Alert: a})
 				sent++
 			}
@@ -266,6 +441,27 @@ func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *
 			hub.Broadcast(counters.Snapshot(rate, st.Len()))
 			sent = 0
 		}
+	}
+}
+
+// feedKindCode maps an alert kind to a 3-bit code for the feed-dedup key. Each
+// kind gets a distinct code so a BOARDING_RECOMMENDED is never suppressed by a
+// recent ILLEGAL_FISHING_SUSPECTED for the same vessel (they are different
+// escalation steps and both must show).
+func feedKindCode(kind string) uint64 {
+	switch kind {
+	case alert.KindZone:
+		return 0
+	case alert.KindSpoof:
+		return 1
+	case alert.KindDark:
+		return 2
+	case alert.KindIllegalSuspected:
+		return 3
+	case alert.KindBoarding:
+		return 4
+	default:
+		return 5
 	}
 }
 

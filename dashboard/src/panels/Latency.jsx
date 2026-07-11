@@ -2,6 +2,8 @@
 // labeled as such, never blurred into one "latency" claim (hot-path rule 3).
 // Bars encode magnitude in one hue; p50/p99 are direct-labeled.
 
+import { memo } from 'react'
+
 function Bar({ label, us, max }) {
   const pct = Math.max(2, Math.min(100, (us / max) * 100))
   return (
@@ -25,7 +27,7 @@ function Group({ title, p50, p99, max }) {
   )
 }
 
-export default function Latency({ metrics }) {
+function Latency({ metrics }) {
   const l = metrics?.latency_us || { inline_p50: 0, inline_p99: 0, sweep_p50: 0, sweep_p99: 0 }
   const max = Math.max(l.inline_p99, l.sweep_p99, 1)
   return (
@@ -40,3 +42,5 @@ export default function Latency({ metrics }) {
     </div>
   )
 }
+
+export default memo(Latency)

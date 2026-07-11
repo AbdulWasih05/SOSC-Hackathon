@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { KIND_COLOR, KIND_LABEL } from '../theme.js'
 
 function detailLine(a) {
@@ -19,10 +20,14 @@ function Intercepts({ list }) {
   )
 }
 
-function Row({ a }) {
+function Row({ a, onAlertClick }) {
   const color = KIND_COLOR[a.kind] || '#8e95a2'
   return (
-    <div className="feed-row">
+    <div
+      className="feed-row"
+      style={{ cursor: 'pointer' }}
+      onClick={() => onAlertClick?.(a)}
+    >
       <div className="feed-indicator" style={{ background: color }} />
       <div className="feed-body">
         <div className="feed-head">
@@ -39,7 +44,7 @@ function Row({ a }) {
   )
 }
 
-export default function AlertFeed({ alerts }) {
+function AlertFeed({ alerts, onAlertClick }) {
   return (
     <div className="panel feed">
       <div className="panel-header">
@@ -52,9 +57,11 @@ export default function AlertFeed({ alerts }) {
         {alerts.length === 0 ? (
           <div className="feed-empty">No alerts detected yet</div>
         ) : (
-          alerts.map((a) => <Row key={a.id} a={a} />)
+          alerts.map((a) => <Row key={a.id} a={a} onAlertClick={onAlertClick} />)
         )}
       </div>
     </div>
   )
 }
+
+export default memo(AlertFeed)

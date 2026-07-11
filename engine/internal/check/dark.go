@@ -1,6 +1,8 @@
 package check
 
 import (
+	"time"
+
 	"palkwatch/internal/alert"
 	"palkwatch/internal/geo"
 	"palkwatch/internal/ingest"
@@ -9,10 +11,14 @@ import (
 
 // Dark-event parameters (CLAUDE.md alert taxonomy).
 const (
-	// SilenceMultiplier is 6x for synthetic scenarios (10x for the real feed,
-	// to absorb coverage gaps). A vessel is dark when its silence exceeds this
-	// multiple of the expected reporting interval for its last speed class.
+	// SilenceMultiplier is the default (synthetic) threshold: a vessel is dark
+	// when its silence exceeds this multiple of the expected reporting interval
+	// for its last speed class. The real feed uses RealFeedSilenceMultiplier.
 	SilenceMultiplier = 6.0
+	// RealFeedSilenceMultiplier is the higher threshold used on the live feed,
+	// where community AIS coverage gaps are routine: 10x keeps ordinary gaps
+	// from masquerading as dark events (CLAUDE.md: "6x synthetic, 10x real feed").
+	RealFeedSilenceMultiplier = 10.0
 	// DarkMinSpeedKn: a vessel must have been moving to be a dark event. An
 	// anchored vessel going quiet is not a crime.
 	DarkMinSpeedKn = 1.0
@@ -37,6 +43,14 @@ type Sweeper struct {
 	ids      *alert.IDGen
 	sink     alert.Sink
 
+	// silenceMult is the silence threshold multiplier (6x synthetic default,
+	// 10x on the live feed via SetSilenceMultiplier).
+	silenceMult float64
+
+	// risk records a dark factor per emitted dark event when the risk engine is
+	// on; nil otherwise. Set via SetRisk before the first Tick.
+	risk RiskRecorder
+
 	// fired records the LastSeenNs at which we last alerted for an MMSI, so a
 	// dark vessel fires once per silence episode, not every tick. Owned solely
 	// by the sweeper goroutine; no lock needed.
@@ -58,16 +72,25 @@ func NewSweeper(st *state.Shards, cold *state.Cold, zones []*geo.Zone, patrols [
 		interest = zones // fallback: if only EEZ zones are configured, use them
 	}
 	return &Sweeper{
-		state:    st,
-		cold:     cold,
-		zones:    interest,
-		patrols:  patrols,
-		counters: counters,
-		ids:      ids,
-		sink:     sink,
-		fired:    make(map[uint32]int64),
+		state:       st,
+		cold:        cold,
+		zones:       interest,
+		patrols:     patrols,
+		counters:    counters,
+		ids:         ids,
+		sink:        sink,
+		silenceMult: SilenceMultiplier,
+		fired:       make(map[uint32]int64),
 	}
 }
+
+// SetSilenceMultiplier overrides the dark-event silence threshold. Call before
+// the sweeper's first Tick (the live feed sets RealFeedSilenceMultiplier).
+func (s *Sweeper) SetSilenceMultiplier(m float64) { s.silenceMult = m }
+
+// SetRisk wires the risk factor recorder. Call before the first Tick; the
+// sweeper goroutine is the only reader afterwards.
+func (s *Sweeper) SetRisk(r RiskRecorder) { s.risk = r }
 
 type darkHit struct {
 	mmsi     uint32
@@ -86,7 +109,7 @@ func (s *Sweeper) Tick(nowNs int64) {
 			return
 		}
 		silenceS := float64(nowNs-v.LastSeenNs) / 1e9
-		if silenceS <= SilenceMultiplier*expectedIntervalS(v.SpeedKn) {
+		if silenceS <= s.silenceMult*expectedIntervalS(v.SpeedKn) {
 			return
 		}
 		if !s.nearZone(v.LastLat, v.LastLon) {
@@ -173,6 +196,9 @@ func (s *Sweeper) emit(h darkHit) {
 	}
 
 	s.counters.Alerts.Add(1)
+	if s.risk != nil {
+		s.risk.RecordDark(h.mmsi, time.Now().UnixMilli())
+	}
 	s.sink(alert.Alert{
 		ID:         s.ids.Next(),
 		Kind:       alert.KindDark,

@@ -2,12 +2,25 @@ package check
 
 import (
 	"math"
+	"time"
 
 	"palkwatch/internal/alert"
 	"palkwatch/internal/geo"
 	"palkwatch/internal/ingest"
 	"palkwatch/internal/state"
 )
+
+// RiskRecorder receives a factor event when a check emits an alert. It is set
+// only when the risk engine is on (SetRisk); nil means no scoring. Recording
+// happens per alert, never per message, so the per-message hot path is unchanged
+// (CLAUDE.md rule G4). nowMs is wall-clock milliseconds. The concrete
+// implementation is risk.Store, kept behind this interface so check does not
+// depend on the risk package.
+type RiskRecorder interface {
+	RecordZone(mmsi uint32, nowMs int64)
+	RecordSpoof(mmsi uint32, nowMs int64)
+	RecordDark(mmsi uint32, nowMs int64)
+}
 
 // Processor ties the vessel table, spatial grid, and inline checks together. It
 // is shared by all workers: the grid is read-only after build and the state is
@@ -20,7 +33,12 @@ type Processor struct {
 	counters *alert.Counters
 	ids      *alert.IDGen
 	sink     alert.Sink
+	risk     RiskRecorder // nil unless the risk engine is on
 }
+
+// SetRisk wires the risk factor recorder. Call before Start; the field is then
+// read-only while workers run, so no lock is needed.
+func (p *Processor) SetRisk(r RiskRecorder) { p.risk = r }
 
 // NewProcessor builds a processor. ids is shared with the dark sweeper so alert
 // IDs never collide. sink receives finished alerts (use alert.Discard for
@@ -60,14 +78,15 @@ func (w *Worker) handle(m *ingest.Message) {
 
 	prev, existed := p.state.Update(m.MMSI, func(prev state.VesselState, _ bool) state.VesselState {
 		return state.VesselState{
-			LastLat:    m.Lat,
-			LastLon:    m.Lon,
-			LastTsMs:   m.TsMs,
-			LastSeenNs: m.IngestNs,
-			SpeedKn:    m.SpeedKn,
-			HeadingDeg: m.HeadingDeg,
-			FlagCode:   m.FlagCode,
-			ZoneMask:   newMask,
+			LastLat:            m.Lat,
+			LastLon:            m.Lon,
+			LastTsMs:           m.TsMs,
+			LastSeenNs:         m.IngestNs,
+			SpeedKn:            m.SpeedKn,
+			HeadingDeg:         m.HeadingDeg,
+			FlagCode:           m.FlagCode,
+			ZoneMask:           newMask,
+			LastFishingAlertMs: prev.LastFishingAlertMs,
 		}
 	})
 	p.counters.Processed.Add(1)
@@ -92,6 +111,19 @@ func (w *Worker) handle(m *ingest.Message) {
 				p.emitSpoof(m, impliedKn)
 			}
 		}
+		
+		// Fishing Pattern Recognition
+		if kind, ok, detail := FishingPattern(&prev.History, prev.HistoryIdx); ok {
+			// Debounce: 30 minutes (1,800,000 ms)
+			if m.TsMs-prev.LastFishingAlertMs > 1_800_000 {
+				p.emitFishing(m, kind, detail)
+				// Record the alert time so we don't spam
+				p.state.Update(m.MMSI, func(curr state.VesselState, _ bool) state.VesselState {
+					curr.LastFishingAlertMs = m.TsMs
+					return curr
+				})
+			}
+		}
 	}
 
 	// Inline latency: ingest-to-emit for the per-message path, recorded for
@@ -101,6 +133,9 @@ func (w *Worker) handle(m *ingest.Message) {
 
 func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 	p.counters.Alerts.Add(1)
+	if p.risk != nil {
+		p.risk.RecordZone(m.MMSI, time.Now().UnixMilli())
+	}
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     alert.KindZone,
@@ -117,6 +152,9 @@ func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 
 func (p *Processor) emitSpoof(m *ingest.Message, impliedKn float64) {
 	p.counters.Alerts.Add(1)
+	if p.risk != nil {
+		p.risk.RecordSpoof(m.MMSI, time.Now().UnixMilli())
+	}
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     alert.KindSpoof,
@@ -127,5 +165,20 @@ func (p *Processor) emitSpoof(m *ingest.Message, impliedKn float64) {
 		Lat:      m.Lat,
 		Lon:      m.Lon,
 		Detail:   map[string]any{"implied_speed_kn": math.Round(impliedKn*10) / 10},
+	})
+}
+
+func (p *Processor) emitFishing(m *ingest.Message, kind string, detail string) {
+	p.counters.Alerts.Add(1)
+	p.sink(alert.Alert{
+		ID:       p.ids.Next(),
+		Kind:     kind,
+		Severity: alert.SeverityHigh,
+		MMSI:     m.MMSI,
+		Name:     p.cold.Name(m.MMSI),
+		TsMs:     m.TsMs,
+		Lat:      m.Lat,
+		Lon:      m.Lon,
+		Detail:   map[string]any{"pattern": detail},
 	})
 }

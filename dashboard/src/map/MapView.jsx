@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, memo, useEffect, useImperativeHandle, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import { HTTP_BASE } from '../ws.js'
 import { conePolygon, interceptLine } from './cone.js'
@@ -6,20 +6,42 @@ import { KIND_COLOR } from '../theme.js'
 
 // Offline style: no external tiles (the pitch runs on localhost with no venue
 // wifi). Zones and vessels are drawn as GeoJSON layers over a dark canvas.
+// Light nautical theme: water is a pale sea blue, land (added on load) is the
+// warm parchment tone, so the two read as distinct.
 const EMPTY_STYLE = {
   version: 8,
   sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#e6e2d3' } }],
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#bcd4de' } }],
 }
 
 const CENTER = [79.25, 9.0]
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
+// zonesBounds returns [[minLon,minLat],[maxLon,maxLat]] over every zone polygon
+// so the map centers on whichever region the engine serves (North Sea for the
+// live feed, Gulf of Mannar for the scenario), with no hardcoded region.
+function zonesBounds(fc) {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity
+  const visit = (coords) => {
+    if (typeof coords[0] === 'number') {
+      const [lon, lat] = coords
+      if (lon < minLon) minLon = lon
+      if (lat < minLat) minLat = lat
+      if (lon > maxLon) maxLon = lon
+      if (lat > maxLat) maxLat = lat
+      return
+    }
+    coords.forEach(visit)
+  }
+  for (const f of fc.features || []) if (f.geometry?.coordinates) visit(f.geometry.coordinates)
+  return Number.isFinite(minLon) ? [[minLon, minLat], [maxLon, maxLat]] : null
+}
+
 // How long alert emphasis (flagged vessel, cone, intercept) stays on the map.
 const CONE_TTL_MS = 15000
 const FLAG_TTL_MS = 9000
 
-const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
+const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selectedMMSI }, ref) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const readyRef = useRef(false)
@@ -29,6 +51,26 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
   const linesRef = useRef(new Map())
   const onVesselClickRef = useRef(onVesselClick)
   onVesselClickRef.current = onVesselClick
+  const onVesselDataRef = useRef(onVesselData)
+  onVesselDataRef.current = onVesselData
+  // Latest position frame (real JS objects, so nested `factors` stays an array;
+  // MapLibre would JSON-stringify it if read back through feature.properties).
+  const latestFCRef = useRef(null)
+  const selectedRef = useRef(selectedMMSI)
+  selectedRef.current = selectedMMSI
+
+  // Look up a vessel's full properties (including the factors array) from the
+  // latest frame. Stable across renders via the refs it closes over.
+  const findVesselProps = (mmsi) => {
+    const feats = latestFCRef.current?.features
+    if (!feats) return null
+    for (const f of feats) if (Number(f.properties?.mmsi) === mmsi) return f.properties
+    return null
+  }
+  // Highest-frequency path: vessel position frames. Coalesce them to at most one
+  // GeoJSON setData per animation frame so a burst never queues redundant work.
+  const pendingVesselsRef = useRef(null)
+  const rafRef = useRef(0)
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -42,10 +84,25 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
 
     map.on('load', async () => {
+      // Offline land/terrain overview: a local low-resolution coastline drawn
+      // under everything else. No external tiles (stays offline, no venue wifi),
+      // just a static GeoJSON bundled with the dashboard so land reads as land.
+      try {
+        map.addSource('land', { type: 'geojson', data: `${import.meta.env.BASE_URL}land.geojson` })
+        // Land is the warm parchment tone over the pale-blue sea background.
+        map.addLayer({ id: 'land-fill', type: 'fill', source: 'land', paint: { 'fill-color': '#e6e2d3', 'fill-opacity': 1 } })
+        map.addLayer({ id: 'land-line', type: 'line', source: 'land', paint: { 'line-color': '#c2b48f', 'line-width': 0.8 } })
+      } catch {
+        /* land is decorative; map still works without it */
+      }
+
       // Zones from the engine (single source of truth).
       try {
         const zones = await fetch(`${HTTP_BASE}/zones`).then((r) => r.json())
         map.addSource('zones', { type: 'geojson', data: zones })
+        // Center on the served region (North Sea live feed, or Gulf of Mannar).
+        const b = zonesBounds(zones)
+        if (b) map.fitBounds(b, { padding: 70, duration: 0, maxZoom: 10 })
         map.addLayer({
           id: 'zone-fill',
           type: 'fill',
@@ -127,9 +184,25 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
         type: 'circle',
         source: 'vessels',
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 1.5, 10, 3],
-          'circle-color': '#3e5c76',
-          'circle-opacity': 0.8,
+          // Color by risk tier (P0): scored vessels stand out from the slate
+          // field; unscored vessels keep the default slate.
+          'circle-color': [
+            'match', ['get', 'risk_tier'],
+            'CRITICAL', '#e11d1d',
+            'HIGH', '#e8791a',
+            'ELEVATED', '#d99000',
+            'LOW', '#3e5c76',
+            /* default (no risk_tier) */ '#3e5c76',
+          ],
+          // Scored vessels draw a touch larger so the eye finds them.
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            6, ['match', ['get', 'risk_tier'], 'CRITICAL', 4, 'HIGH', 3.5, 'ELEVATED', 3, 1.5],
+            10, ['match', ['get', 'risk_tier'], 'CRITICAL', 8, 'HIGH', 7, 'ELEVATED', 6, 3],
+          ],
+          'circle-stroke-color': '#0a1128',
+          'circle-stroke-width': ['case', ['has', 'risk_tier'], 1.5, 0],
+          'circle-opacity': 0.85,
         },
       })
 
@@ -180,10 +253,12 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
 
       const handleVesselClick = (e) => {
         if (e.features.length > 0) {
-          const props = e.features[0].properties
-          if (props.mmsi && onVesselClickRef.current) {
-            onVesselClickRef.current(props.mmsi)
-          }
+          const mmsi = Number(e.features[0].properties.mmsi)
+          if (!mmsi) return
+          onVesselClickRef.current?.(mmsi)
+          // Push the full props (with the factors array intact) from the raw
+          // frame, not the click event, which JSON-stringifies nested fields.
+          onVesselDataRef.current?.(findVesselProps(mmsi))
         }
       }
 
@@ -223,13 +298,30 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
 
     return () => {
       clearInterval(sweep)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
       map.remove()
     }
   }, [])
 
   useImperativeHandle(ref, () => ({
     setVessels(fc) {
-      if (readyRef.current) mapRef.current.getSource('vessels')?.setData(fc)
+      if (!readyRef.current) return
+      // Store the latest frame and flush on the next animation frame, collapsing
+      // any frames that arrive in between into a single setData.
+      pendingVesselsRef.current = fc
+      if (rafRef.current) return
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = 0
+        const fc = pendingVesselsRef.current
+        pendingVesselsRef.current = null
+        if (!fc) return
+        mapRef.current?.getSource('vessels')?.setData(fc)
+        latestFCRef.current = fc
+        // Keep the open drawer live: push the selected vessel's fresh score.
+        if (selectedRef.current) {
+          onVesselDataRef.current?.(findVesselProps(Number(selectedRef.current)))
+        }
+      })
     },
     showAlert(a) {
       if (!readyRef.current) return
@@ -248,6 +340,10 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
         mapRef.current.easeTo({ center: [a.lon, a.lat], zoom: 9.2, duration: 1200 })
       }
       mapRef.current._redraw()
+    },
+    flyTo(lat, lon) {
+      if (!readyRef.current) return
+      mapRef.current?.easeTo({ center: [lon, lat], zoom: 10, duration: 900 })
     },
   }))
 
@@ -283,4 +379,4 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
   )
 })
 
-export default MapView
+export default memo(MapView)

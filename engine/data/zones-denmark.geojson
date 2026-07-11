@@ -1,0 +1,67 @@
+{
+  "type": "FeatureCollection",
+  "note": "Zones for the aisdk (Danish Maritime Authority) demo replay. Real restricted areas in the Kattegat / Great Belt, where the recorded traffic is densest. Coordinates are [lon, lat].",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "anholt-wind-farm",
+        "name": "Anholt Offshore Wind Farm (closed to shipping)",
+        "type": "mpa"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [11.16, 56.42],
+            [11.40, 56.42],
+            [11.40, 56.67],
+            [11.16, 56.67],
+            [11.16, 56.42]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "great-belt-n2000",
+        "name": "Great Belt Natura 2000 Protected Area",
+        "type": "mpa"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [10.85, 55.30],
+            [11.12, 55.30],
+            [11.12, 55.52],
+            [10.85, 55.52],
+            [10.85, 55.30]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "denmark-eez",
+        "name": "Danish EEZ (Kattegat segment)",
+        "type": "eez",
+        "country": "DK"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [10.00, 54.80],
+            [12.90, 54.80],
+            [12.90, 57.80],
+            [10.00, 57.80],
+            [10.00, 54.80]
+          ]
+        ]
+      }
+    }
+  ]
+}
