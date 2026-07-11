@@ -10,7 +10,7 @@ function Bar({ label, us, max }) {
       <span className="lat-track">
         <span className="lat-fill" style={{ width: `${pct}%` }} />
       </span>
-      <span className="lat-val">{Math.round(us).toLocaleString()}</span>
+      <span className="lat-val">{Math.round(us).toLocaleString()} µs</span>
     </div>
   )
 }
@@ -30,9 +30,13 @@ export default function Latency({ metrics }) {
   const max = Math.max(l.inline_p99, l.sweep_p99, 1)
   return (
     <div className="panel">
-      <div className="panel-title">Latency &middot; microseconds</div>
-      <Group title="Inline · zone, spoof" p50={l.inline_p50} p99={l.inline_p99} max={max} />
-      <Group title="Sweep · dark, 1s tick" p50={l.sweep_p50} p99={l.sweep_p99} max={max} />
+      <div className="panel-header">
+        <span className="panel-title">Latency · µs</span>
+      </div>
+      <div className="panel-body">
+        <Group title="Inline · Zone, Spoof" p50={l.inline_p50} p99={l.inline_p99} max={max} />
+        <Group title="Sweep · Dark, 1s tick" p50={l.sweep_p50} p99={l.sweep_p99} max={max} />
+      </div>
     </div>
   )
 }

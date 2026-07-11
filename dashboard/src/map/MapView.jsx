@@ -9,7 +9,7 @@ import { KIND_COLOR } from '../theme.js'
 const EMPTY_STYLE = {
   version: 8,
   sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#0a0f1e' } }],
+  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#e6e2d3' } }],
 }
 
 const CENTER = [79.25, 9.0]
@@ -39,7 +39,7 @@ function zonesBounds(fc) {
 const CONE_TTL_MS = 15000
 const FLAG_TTL_MS = 9000
 
-const MapView = forwardRef(function MapView(_, ref) {
+const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const readyRef = useRef(false)
@@ -47,6 +47,8 @@ const MapView = forwardRef(function MapView(_, ref) {
   const conesRef = useRef(new Map()) // id -> {feature, expires}
   const flagsRef = useRef(new Map()) // mmsi -> {feature, expires}
   const linesRef = useRef(new Map())
+  const onVesselClickRef = useRef(onVesselClick)
+  onVesselClickRef.current = onVesselClick
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -119,8 +121,8 @@ const MapView = forwardRef(function MapView(_, ref) {
           source: 'patrols',
           paint: {
             'circle-radius': 6,
-            'circle-color': '#e6edf3',
-            'circle-stroke-color': '#0a0f1e',
+            'circle-color': '#1a2332',
+            'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
           },
         })
@@ -136,8 +138,8 @@ const MapView = forwardRef(function MapView(_, ref) {
         source: 'vessels',
         paint: {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 1.5, 10, 3],
-          'circle-color': '#5b6b82',
-          'circle-opacity': 0.85,
+          'circle-color': '#3e5c76',
+          'circle-opacity': 0.8,
         },
       })
 
@@ -181,10 +183,30 @@ const MapView = forwardRef(function MapView(_, ref) {
         paint: {
           'circle-radius': 7,
           'circle-color': ['get', 'color'],
-          'circle-stroke-color': '#0a0f1e',
+          'circle-stroke-color': '#0a1128',
           'circle-stroke-width': 2,
         },
       })
+
+      const handleVesselClick = (e) => {
+        if (e.features.length > 0) {
+          const props = e.features[0].properties
+          if (props.mmsi && onVesselClickRef.current) {
+            onVesselClickRef.current(props.mmsi)
+          }
+        }
+      }
+
+      map.on('click', 'vessel-dot', handleVesselClick)
+      map.on('click', 'flag-dot', handleVesselClick)
+      
+      const setPointer = () => { map.getCanvas().style.cursor = 'pointer' }
+      const resetPointer = () => { map.getCanvas().style.cursor = '' }
+      
+      map.on('mouseenter', 'vessel-dot', setPointer)
+      map.on('mouseleave', 'vessel-dot', resetPointer)
+      map.on('mouseenter', 'flag-dot', setPointer)
+      map.on('mouseleave', 'flag-dot', resetPointer)
 
       readyRef.current = true
     })
@@ -224,7 +246,7 @@ const MapView = forwardRef(function MapView(_, ref) {
       const now = Date.now()
       const color = KIND_COLOR[a.kind] || '#5b6b82'
       flagsRef.current.set(a.mmsi, {
-        feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { color } },
+        feature: { type: 'Feature', geometry: { type: 'Point', coordinates: [a.lon, a.lat] }, properties: { color, mmsi: a.mmsi } },
         expires: now + FLAG_TTL_MS,
       })
       if (a.cone) {

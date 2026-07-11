@@ -20,18 +20,21 @@ function Intercepts({ list }) {
 }
 
 function Row({ a }) {
-  const color = KIND_COLOR[a.kind] || '#5b6b82'
+  const color = KIND_COLOR[a.kind] || '#8e95a2'
   return (
-    <div className="feed-row" style={{ borderLeftColor: color }}>
-      <div className="feed-head">
-        <span className="feed-kind" style={{ color }}>
-          {KIND_LABEL[a.kind] || a.kind}
-        </span>
-        <span className="feed-name">{a.name || `MMSI ${a.mmsi}`}</span>
-        {a.severity === 'CRITICAL' && <span className="feed-crit">CRITICAL</span>}
+    <div className="feed-row">
+      <div className="feed-indicator" style={{ background: color }} />
+      <div className="feed-body">
+        <div className="feed-head">
+          <span className="feed-kind" style={{ color }}>
+            {KIND_LABEL[a.kind] || a.kind}
+          </span>
+          <span className="feed-name">{a.name || `MMSI ${a.mmsi}`}</span>
+          {a.severity === 'CRITICAL' && <span className="feed-crit">CRITICAL</span>}
+        </div>
+        <div className="feed-detail">{detailLine(a)}</div>
+        <Intercepts list={a.intercepts} />
       </div>
-      <div className="feed-detail">{detailLine(a)}</div>
-      <Intercepts list={a.intercepts} />
     </div>
   )
 }
@@ -39,10 +42,15 @@ function Row({ a }) {
 export default function AlertFeed({ alerts }) {
   return (
     <div className="panel feed">
-      <div className="panel-title">Alerts</div>
+      <div className="panel-header">
+        <span className="panel-title">Alerts</span>
+        {alerts.length > 0 && (
+          <span className="panel-title-count">{alerts.length}</span>
+        )}
+      </div>
       <div className="feed-list">
         {alerts.length === 0 ? (
-          <div className="feed-empty">no alerts yet</div>
+          <div className="feed-empty">No alerts detected yet</div>
         ) : (
           alerts.map((a) => <Row key={a.id} a={a} />)
         )}
