@@ -1,0 +1,11 @@
+{
+  "name": "sosc-hackathon-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix dashboard",
+    "build": "npm run build --prefix dashboard",
+    "install": "npm install --prefix dashboard",
+    "test": "npm run test --prefix dashboard"
+  }
+}

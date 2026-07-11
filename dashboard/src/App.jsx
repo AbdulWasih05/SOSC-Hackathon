@@ -142,6 +142,9 @@ function MapLegend() {
         <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#3987e5' }} />Zone violation</div>
         <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#c98500' }} />Spoof / teleport</div>
         <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#e66767' }} />Dark event</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#9d4edd' }} />Trawling pattern</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#20b2aa' }} />Longlining pattern</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#ff007f' }} />Purse seining loop</div>
       </div>
       <div className="legend-group">
         <span className="legend-label">Assets</span>

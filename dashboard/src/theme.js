@@ -4,12 +4,18 @@ export const KIND_COLOR = {
   ZONE_VIOLATION: '#3987e5', // blue
   SPOOF_TELEPORT: '#c98500', // yellow
   DARK_EVENT: '#e66767', // red
+  TRAWLING: '#9d4edd', // purple
+  LONGLINING: '#20b2aa', // teal
+  PURSE_SEINING: '#ff007f', // pink
 }
 
 export const KIND_LABEL = {
   ZONE_VIOLATION: 'ZONE',
   SPOOF_TELEPORT: 'SPOOF',
   DARK_EVENT: 'DARK',
+  TRAWLING: 'TRAWL',
+  LONGLINING: 'LONGLINE',
+  PURSE_SEINING: 'SEINE',
 }
 
 // Compact number format: 8,523,519 -> 8.5M.

@@ -5,9 +5,12 @@ package alert
 
 // Alert kinds. MMSI is uint32 everywhere (hot-path rule 7).
 const (
-	KindZone  = "ZONE_VIOLATION"
-	KindSpoof = "SPOOF_TELEPORT"
-	KindDark  = "DARK_EVENT"
+	KindZone         = "ZONE_VIOLATION"
+	KindSpoof        = "SPOOF_TELEPORT"
+	KindDark         = "DARK_EVENT"
+	KindTrawling     = "TRAWLING"
+	KindLonglining   = "LONGLINING"
+	KindPurseSeining = "PURSE_SEINING"
 )
 
 // Severities.

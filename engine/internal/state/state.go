@@ -12,6 +12,16 @@ import (
 // shardCount is fixed at 64 (hot-path rule 1). MMSI hashes select a shard.
 const shardCount = 64
 
+// HistoryCapacity is the number of historical fixes retained per vessel
+const HistoryCapacity = 16
+
+// Fix represents a single historical point for pattern recognition
+type Fix struct {
+	TsMs       int64
+	SpeedKn    float32
+	HeadingDeg float32
+}
+
 // VesselState is the flat per-vessel record. All fields are fixed-size numerics.
 // ZoneMask is a bitset of the zones the vessel was last known to be inside (bit
 // i == zone index i), which makes outside-to-inside transitions a cheap bit op.
@@ -19,14 +29,17 @@ const shardCount = 64
 // LastSeenNs is the monotonic time the engine last processed a fix for this
 // vessel (used by the dark sweep to measure silence, immune to event-time skew).
 type VesselState struct {
-	LastLat    float64
-	LastLon    float64
-	LastTsMs   int64
-	LastSeenNs int64
-	SpeedKn    float32
-	HeadingDeg float32
-	FlagCode   uint16
-	ZoneMask   uint32
+	LastLat            float64
+	LastLon            float64
+	LastTsMs           int64
+	LastSeenNs         int64
+	SpeedKn            float32
+	HeadingDeg         float32
+	FlagCode           uint16
+	ZoneMask           uint32
+	History            [HistoryCapacity]Fix
+	HistoryIdx         uint8
+	LastFishingAlertMs int64
 }
 
 type shard struct {
@@ -71,7 +84,18 @@ func (s *Shards) Update(mmsi uint32, fn func(prev VesselState, existed bool) Ves
 	sh := s.shardFor(mmsi)
 	sh.mu.Lock()
 	prev, existed := sh.m[mmsi]
-	sh.m[mmsi] = fn(prev, existed)
+	next := fn(prev, existed)
+	
+	next.History = prev.History
+	next.HistoryIdx = prev.HistoryIdx
+	next.History[next.HistoryIdx%HistoryCapacity] = Fix{
+		TsMs:       next.LastTsMs,
+		SpeedKn:    next.SpeedKn,
+		HeadingDeg: next.HeadingDeg,
+	}
+	next.HistoryIdx++
+	
+	sh.m[mmsi] = next
 	sh.mu.Unlock()
 	return prev, existed
 }
