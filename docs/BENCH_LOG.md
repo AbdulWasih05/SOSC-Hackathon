@@ -11,6 +11,7 @@ the slide happens on the team's weakest Linux laptop at H18.
 |--------|-----------|-----|--------|----------|-----------|-----------|---------|-------|
 | 9eb6f2f | H4 | 10s | 16 (2*workers) | 7,609,906 | 1536 us | 6144 us | 0 | first engine number; geofence fires ~670k alerts |
 | 9eb6f2f | H4 | 10s | 4 | 7,062,556 | 2 us | 3072 us | 0 | smaller buffer, lower latency, ~7% less throughput |
+| 6622e0f | H6 (v0-boring) | 8s x3 | 16 | ~6,000,000 (median) | 1536 us | 6144 us | 0 | spoof check added; median of 3 runs 5.68M/5.99M/6.00M |
 
 Notes:
 - Throughput is ~150x the 50k/s floor on this laptop. The constraint is met with
@@ -21,3 +22,9 @@ Notes:
 - Race detector (`-race`) needs cgo and did not run on this Windows box (no C
   compiler). Run it on the Linux bench machine before the benchmark is LOCKED.
 - Sweep latency is not yet measured (dark-event sweep lands H12).
+- H6 vs H4: adding the mandatory spoof check (one flat-plane DistanceM per
+  message) costs ~20% throughput. This is inherent feature cost, not a
+  regression bug; boring-first means the sqrt stays on the common path until
+  pprof justifies a squared-distance fast path on a branch. Still ~120x the
+  50k/s floor. Run-to-run variance on this laptop is high (5.3M-7.6M observed),
+  so single-run deltas are noise; medians are quoted.
