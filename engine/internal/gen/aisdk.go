@@ -106,6 +106,53 @@ func RunAISDK(ctx context.Context, cfg AISDKConfig, out chan<- ingest.Message, s
 	return nil
 }
 
+// LoadAISDK parses up to max valid Class A/B position reports from an aisdk CSV
+// into a slice held in memory, with no replay pacing. This is the real-data
+// benchmark source: the messages are real AIS shapes (real MMSIs, positions,
+// speeds, event timestamps), pre-generated in memory so the measured loop has no
+// network, no disk, and no parsing (rule 3 / the bench methodology). The bench
+// then loops this slice through the engine as fast as the workers consume it, so
+// the number is honest throughput on real data, not a replay rate. max <= 0
+// loads the whole file (a 3 GB file will not fit; callers should cap). Names go
+// to the cold store via setName so alerts carry vessel names.
+func LoadAISDK(path string, max int, setName func(uint32, string)) ([]ingest.Message, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 256*1024), 1024*1024)
+
+	capHint := max
+	if capHint <= 0 {
+		capHint = 1 << 20
+	}
+	msgs := make([]ingest.Message, 0, capHint)
+	for sc.Scan() {
+		line := sc.Text()
+		if line == "" || line[0] == '#' {
+			continue
+		}
+		msg, name, _, ok := parseAISDK(line)
+		if !ok {
+			continue
+		}
+		if name != "" && setName != nil {
+			setName(msg.MMSI, name)
+		}
+		msgs = append(msgs, msg)
+		if max > 0 && len(msgs) >= max {
+			break
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return msgs, err
+	}
+	return msgs, nil
+}
+
 // parseAISDK maps one CSV row to a Message. It returns ok=false for base
 // stations, aids to navigation, malformed rows, and invalid positions.
 func parseAISDK(line string) (ingest.Message, string, int64, bool) {
