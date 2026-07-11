@@ -114,14 +114,25 @@ func (w *Worker) handle(m *ingest.Message) {
 		
 		// Fishing Pattern Recognition
 		if kind, ok, detail := FishingPattern(&prev.History, prev.HistoryIdx); ok {
-			// Debounce: 30 minutes (1,800,000 ms)
-			if m.TsMs-prev.LastFishingAlertMs > 1_800_000 {
-				p.emitFishing(m, kind, detail)
-				// Record the alert time so we don't spam
-				p.state.Update(m.MMSI, func(curr state.VesselState, _ bool) state.VesselState {
-					curr.LastFishingAlertMs = m.TsMs
-					return curr
-				})
+			illegal := false
+			for _, zi := range w.zoneBuf {
+				z := p.grid.Zones()[zi]
+				if ZoneViolation(z.Kind, z.CountryCode, m.FlagCode) {
+					illegal = true
+					break
+				}
+			}
+			
+			if illegal {
+				// Debounce: 30 minutes (1,800,000 ms)
+				if m.TsMs-prev.LastFishingAlertMs > 1_800_000 {
+					p.emitFishing(m, kind, detail)
+					// Record the alert time so we don't spam
+					p.state.Update(m.MMSI, func(curr state.VesselState, _ bool) state.VesselState {
+						curr.LastFishingAlertMs = m.TsMs
+						return curr
+					})
+				}
 			}
 		}
 	}
