@@ -13,6 +13,8 @@ export default function App() {
   const [status, setStatus] = useState('connecting')
   const [rightTab, setRightTab] = useState('details')
   const [selectedMMSI, setSelectedMMSI] = useState(null)
+  // Mobile bottom nav: 'map' | 'alerts' | 'stats'
+  const [mobileTab, setMobileTab] = useState('map')
   const mapRef = useRef(null)
 
   const onPositions = useCallback((fc) => mapRef.current?.setVessels(fc), [])
@@ -24,6 +26,13 @@ export default function App() {
   const onVesselClick = useCallback((mmsi) => {
     setSelectedMMSI(mmsi)
     setRightTab('vessel')
+    setMobileTab('stats')
+  }, [])
+
+  // Fly the map to a clicked alert's vessel position and switch mobile to map.
+  const onAlertClick = useCallback((a) => {
+    mapRef.current?.flyTo(a.lat, a.lon)
+    setMobileTab('map')
   }, [])
 
   useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus }), [onAlert, onPositions])
@@ -61,8 +70,8 @@ export default function App() {
       {/* ── Main Content: Left Panel | Map | Right Panel ── */}
       <div className="main-content">
         {/* Left panel: Alert feed */}
-        <div className="left-panel">
-          <AlertFeed alerts={alerts} />
+        <div className={`left-panel${mobileTab === 'alerts' ? ' mobile-panel-visible' : ''}`}>
+          <AlertFeed alerts={alerts} onAlertClick={onAlertClick} />
         </div>
 
         {/* Center: Map */}
@@ -82,7 +91,7 @@ export default function App() {
         </div>
 
         {/* Right panel: Details & Latency */}
-        <div className="right-panel">
+        <div className={`right-panel${mobileTab === 'stats' ? ' mobile-panel-visible' : ''}`}>
           <div className="right-panel-tabs">
             <div
               className={`right-tab${rightTab === 'details' ? ' active' : ''}`}
@@ -116,6 +125,31 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* ── Mobile Bottom Navigation Bar ── */}
+      <nav className="mobile-nav">
+        <button
+          className={`mobile-nav-tab${mobileTab === 'map' ? ' active' : ''}`}
+          onClick={() => setMobileTab('map')}
+        >
+          <span className="mobile-nav-icon">🗺</span>
+          Map
+        </button>
+        <button
+          className={`mobile-nav-tab${mobileTab === 'alerts' ? ' active' : ''}`}
+          onClick={() => setMobileTab('alerts')}
+        >
+          <span className="mobile-nav-icon">⚠</span>
+          Alerts{alerts.length > 0 ? ` (${alerts.length})` : ''}
+        </button>
+        <button
+          className={`mobile-nav-tab${mobileTab === 'stats' ? ' active' : ''}`}
+          onClick={() => setMobileTab('stats')}
+        >
+          <span className="mobile-nav-icon">📊</span>
+          Stats
+        </button>
+      </nav>
     </div>
   )
 }
@@ -142,6 +176,9 @@ function MapLegend() {
         <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#3987e5' }} />Zone violation</div>
         <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#c98500' }} />Spoof / teleport</div>
         <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#e66767' }} />Dark event</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#9d4edd' }} />Trawling pattern</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#20b2aa' }} />Longlining pattern</div>
+        <div className="legend-row"><span className="legend-swatch dot" style={{ background: '#ff007f' }} />Purse seining loop</div>
       </div>
       <div className="legend-group">
         <span className="legend-label">Assets</span>

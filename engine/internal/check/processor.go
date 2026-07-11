@@ -60,14 +60,15 @@ func (w *Worker) handle(m *ingest.Message) {
 
 	prev, existed := p.state.Update(m.MMSI, func(prev state.VesselState, _ bool) state.VesselState {
 		return state.VesselState{
-			LastLat:    m.Lat,
-			LastLon:    m.Lon,
-			LastTsMs:   m.TsMs,
-			LastSeenNs: m.IngestNs,
-			SpeedKn:    m.SpeedKn,
-			HeadingDeg: m.HeadingDeg,
-			FlagCode:   m.FlagCode,
-			ZoneMask:   newMask,
+			LastLat:            m.Lat,
+			LastLon:            m.Lon,
+			LastTsMs:           m.TsMs,
+			LastSeenNs:         m.IngestNs,
+			SpeedKn:            m.SpeedKn,
+			HeadingDeg:         m.HeadingDeg,
+			FlagCode:           m.FlagCode,
+			ZoneMask:           newMask,
+			LastFishingAlertMs: prev.LastFishingAlertMs,
 		}
 	})
 	p.counters.Processed.Add(1)
@@ -90,6 +91,19 @@ func (w *Worker) handle(m *ingest.Message) {
 		if prev.LastTsMs != 0 {
 			if spoof, impliedKn := SpoofTeleport(prev.LastLat, prev.LastLon, prev.LastTsMs, m.Lat, m.Lon, m.TsMs); spoof {
 				p.emitSpoof(m, impliedKn)
+			}
+		}
+		
+		// Fishing Pattern Recognition
+		if kind, ok, detail := FishingPattern(&prev.History, prev.HistoryIdx); ok {
+			// Debounce: 30 minutes (1,800,000 ms)
+			if m.TsMs-prev.LastFishingAlertMs > 1_800_000 {
+				p.emitFishing(m, kind, detail)
+				// Record the alert time so we don't spam
+				p.state.Update(m.MMSI, func(curr state.VesselState, _ bool) state.VesselState {
+					curr.LastFishingAlertMs = m.TsMs
+					return curr
+				})
 			}
 		}
 	}
@@ -127,5 +141,20 @@ func (p *Processor) emitSpoof(m *ingest.Message, impliedKn float64) {
 		Lat:      m.Lat,
 		Lon:      m.Lon,
 		Detail:   map[string]any{"implied_speed_kn": math.Round(impliedKn*10) / 10},
+	})
+}
+
+func (p *Processor) emitFishing(m *ingest.Message, kind string, detail string) {
+	p.counters.Alerts.Add(1)
+	p.sink(alert.Alert{
+		ID:       p.ids.Next(),
+		Kind:     kind,
+		Severity: alert.SeverityHigh,
+		MMSI:     m.MMSI,
+		Name:     p.cold.Name(m.MMSI),
+		TsMs:     m.TsMs,
+		Lat:      m.Lat,
+		Lon:      m.Lon,
+		Detail:   map[string]any{"pattern": detail},
 	})
 }
