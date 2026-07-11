@@ -1,0 +1,19 @@
+{
+  "note": "Stationed patrol assets for intercept geometry (CLAUDE.md: 2 assets). Positions configured, not fleet-integrated (roadmap). Coordinates in decimal degrees.",
+  "patrols": [
+    {
+      "id": "P1",
+      "name": "ICGS Rani Abbakka",
+      "lat": 9.28,
+      "lon": 79.30,
+      "max_speed_kn": 25
+    },
+    {
+      "id": "P2",
+      "name": "ICGS Vikram",
+      "lat": 8.85,
+      "lon": 79.05,
+      "max_speed_kn": 22
+    }
+  ]
+}

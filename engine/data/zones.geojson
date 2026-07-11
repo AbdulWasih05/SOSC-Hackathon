@@ -1,0 +1,70 @@
+{
+  "type": "FeatureCollection",
+  "note": "PLACEHOLDER hand-drawn polygons. Real Marine Regions shapes get swapped in by the data owner (PRD section 6). Coordinates are [lon, lat].",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "gulf-of-mannar-mnp",
+        "name": "Gulf of Mannar Marine National Park",
+        "type": "mpa"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.00, 8.90],
+            [79.30, 8.90],
+            [79.40, 9.20],
+            [79.10, 9.30],
+            [78.90, 9.10],
+            [79.00, 8.90]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "india-eez",
+        "name": "Indian EEZ (Palk Strait / Gulf of Mannar segment)",
+        "type": "eez",
+        "country": "IN"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [78.00, 8.50],
+            [79.50, 8.50],
+            [79.60, 9.50],
+            [79.30, 10.00],
+            [78.00, 10.00],
+            [78.00, 8.50]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sri-lanka-eez",
+        "name": "Sri Lankan EEZ (Palk Strait / Gulf of Mannar segment)",
+        "type": "eez",
+        "country": "LK"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.50, 8.50],
+            [81.00, 8.50],
+            [81.00, 10.00],
+            [79.60, 9.50],
+            [79.50, 8.50]
+          ]
+        ]
+      }
+    }
+  ]
+}

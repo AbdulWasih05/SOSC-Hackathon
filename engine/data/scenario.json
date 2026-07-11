@@ -1,0 +1,17 @@
+{
+  "note": "SKELETON. Deterministic Act 2 timeline, filled in at H16 by the data owner (PRD section 6, scenario mode). One example vessel shows the shape; events array drives the scripted story (zone violation, spoof teleport, dark event + intercept).",
+  "name": "gulf-of-mannar-demo",
+  "tick_ms": 1000,
+  "vessels": [
+    {
+      "mmsi": 419001234,
+      "name": "EXAMPLE TRAWLER",
+      "flag": "IN",
+      "spawn_lat": 9.05,
+      "spawn_lon": 79.20,
+      "speed_kn": 8.0,
+      "heading_deg": 45
+    }
+  ],
+  "events": []
+}

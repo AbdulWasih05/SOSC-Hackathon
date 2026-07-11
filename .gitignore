@@ -1,0 +1,17 @@
+# Go
+/engine/palkwatch
+/engine/bench
+*.exe
+*.test
+*.out
+*.prof
+
+# Node / Vite
+node_modules/
+dashboard/dist/
+dashboard/.vite/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
