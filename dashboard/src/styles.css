@@ -40,6 +40,8 @@ body,
 #root {
   height: 100%;
   width: 100%;
+  /* Prevent mobile bounce / overscroll issues */
+  overflow: hidden;
 }
 
 body {
@@ -57,7 +59,13 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh; /* dynamic viewport height for mobile browsers */
   overflow: hidden;
+}
+
+/* Hidden on desktop; shown only via the @media (max-width: 600px) rule */
+.mobile-nav {
+  display: none;
 }
 
 /* ── Top Header Bar ──────────────────────────────────────────────── */
@@ -851,35 +859,349 @@ body {
   background: var(--ink-3);
 }
 
-/* ── Responsive: stack panels below map on narrow screens ────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   RESPONSIVE SYSTEM
+   Breakpoints:
+   - xl  >= 1100px  (large desktop, side-by-side panels)
+   - lg  >= 860px   (desktop, standard layout)
+   - md  >= 600px   (tablet, narrower panels)
+   - sm  <  600px   (mobile, bottom nav, full map)
+   ═══════════════════════════════════════════════════════════════════ */
 
+/* ── Large desktop: slim panels ─────────────────────────────────── */
 @media (max-width: 1100px) {
-
   .left-panel,
   .right-panel {
     width: 280px;
   }
+
+  .topbar-tag {
+    display: none;
+  }
 }
 
+/* ── Tablet (860px): hide right panel, left panel goes under map ── */
 @media (max-width: 860px) {
+  .topbar {
+    padding: 0 14px;
+    gap: 10px;
+    height: 50px;
+  }
+
+  .topbar-meta {
+    display: none;
+  }
+
+  .topbar-update {
+    display: none;
+  }
+
   .main-content {
     flex-direction: column;
   }
 
-  .left-panel,
-  .right-panel {
+  .left-panel {
     width: 100%;
-    max-height: 35vh;
-    border-left: none;
+    max-height: 32vh;
     border-right: none;
     border-top: 1px solid var(--border);
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .right-panel {
+    display: none;
   }
 
   .map-container {
-    min-height: 40vh;
+    min-height: 45vh;
+    flex: 1;
   }
 
   .cards-row {
     overflow-x: auto;
+    padding: 0 14px;
+  }
+
+  .feature-card {
+    min-width: 130px;
+    padding: 10px 14px;
+  }
+
+  .card-value {
+    font-size: 22px;
+  }
+
+  .map-legend {
+    top: 8px;
+    right: 8px;
+    padding: 8px 10px;
+    font-size: 10px;
+    max-width: 160px;
+  }
+}
+
+/* ── Mobile (600px): bottom tab nav, full-screen map ───────────── */
+@media (max-width: 600px) {
+  body {
+    font-size: 13px;
+  }
+
+  /* Topbar: minimal — brand + status only */
+  .topbar {
+    padding: 0 12px;
+    height: 48px;
+    gap: 8px;
+  }
+
+  .topbar-sep {
+    display: none;
+  }
+
+  .topbar-route,
+  .topbar-tag,
+  .topbar-update {
+    display: none;
+  }
+
+  .topbar-right {
+    gap: 8px;
+  }
+
+  .brand {
+    font-size: 14px;
+    gap: 8px;
+  }
+
+  .brand-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+
+  /* Cards row: 2x3 grid instead of horizontal scroll */
+  .cards-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    overflow-x: hidden;
+    padding: 0;
+    gap: 0;
+  }
+
+  .feature-card {
+    min-width: 0;
+    padding: 8px 10px;
+    border-right: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .feature-card:nth-child(3),
+  .feature-card:nth-child(6) {
+    border-right: none;
+  }
+
+  .feature-card:nth-child(4),
+  .feature-card:nth-child(5),
+  .feature-card:nth-child(6) {
+    border-bottom: none;
+  }
+
+  .card-section-label {
+    display: none;
+  }
+
+  .card-value {
+    font-size: 18px;
+  }
+
+  .card-title {
+    font-size: 10px;
+    margin-bottom: 3px;
+  }
+
+  .card-sub {
+    font-size: 9px;
+    margin-top: 2px;
+  }
+
+  /* Main content: map takes full space, panels slide up as sheets */
+  .main-content {
+    flex-direction: column;
+    position: relative;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Map fills all remaining space above the bottom nav */
+  .map-container {
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Side panels become full-width bottom sheets, hidden by default.
+     Toggled to visible via .mobile-panel-visible (set by JS)      */
+  .left-panel,
+  .right-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 55vh;
+    border: none;
+    border-top: 2px solid var(--border);
+    border-radius: 0;
+    z-index: 20;
+    background: var(--surface);
+    transform: translateY(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-y: auto;
+  }
+
+  .left-panel.mobile-panel-visible,
+  .right-panel.mobile-panel-visible {
+    transform: translateY(0);
+  }
+
+  /* Bottom navigation tab bar */
+  .mobile-nav {
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 25;
+  }
+
+  .mobile-nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 8px 4px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: var(--font);
+    transition: color 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-nav-tab:active {
+    background: var(--surface-alt);
+  }
+
+  .mobile-nav-tab.active {
+    color: var(--accent);
+  }
+
+  .mobile-nav-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* Map legend: compact toggle-able on mobile */
+  .map-legend {
+    top: auto;
+    bottom: 12px;
+    right: 12px;
+    max-width: 140px;
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+
+  /* Map notice: full-width on mobile */
+  .map-notice {
+    left: 8px;
+    right: 8px;
+    max-width: none;
+    top: 8px;
+  }
+
+  /* Right panel tabs: scrollable on narrow screens */
+  .right-panel-tabs {
+    padding: 0 10px;
+    overflow-x: auto;
+  }
+
+  .right-tab {
+    padding: 10px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .right-panel-body {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  /* Alert feed rows: tighter on mobile */
+  .feed-row {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .feed-name {
+    font-size: 12px;
+  }
+
+  .feed-detail {
+    font-size: 11px;
+  }
+
+  /* Panel headers */
+  .panel-header {
+    padding: 10px 12px 8px;
+  }
+
+  .panel-title {
+    font-size: 12px;
+  }
+
+  /* Stats table tighter */
+  .stats-table td {
+    padding: 7px 0;
+    font-size: 12px;
+  }
+
+  /* Drag handle at top of bottom sheet */
+  .left-panel::before,
+  .right-panel::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 8px auto 4px;
+    opacity: 0.4;
+  }
+}
+
+/* ── Extra-small (400px): very compact mobile ─────────────────────  */
+@media (max-width: 400px) {
+  .cards-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .feature-card:nth-child(2n) {
+    border-right: none;
+  }
+
+  .feature-card:nth-child(5),
+  .feature-card:nth-child(6) {
+    border-bottom: none;
+  }
+
+  .feature-card:nth-child(3),
+  .feature-card:nth-child(4) {
+    border-bottom: 1px solid var(--border-light);
   }
 }

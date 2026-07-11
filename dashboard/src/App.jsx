@@ -13,6 +13,8 @@ export default function App() {
   const [status, setStatus] = useState('connecting')
   const [rightTab, setRightTab] = useState('details')
   const [selectedMMSI, setSelectedMMSI] = useState(null)
+  // Mobile bottom nav: 'map' | 'alerts' | 'stats'
+  const [mobileTab, setMobileTab] = useState('map')
   const mapRef = useRef(null)
 
   const onPositions = useCallback((fc) => mapRef.current?.setVessels(fc), [])
@@ -24,6 +26,7 @@ export default function App() {
   const onVesselClick = useCallback((mmsi) => {
     setSelectedMMSI(mmsi)
     setRightTab('vessel')
+    setMobileTab('stats')
   }, [])
 
   useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus }), [onAlert, onPositions])
@@ -61,7 +64,7 @@ export default function App() {
       {/* ── Main Content: Left Panel | Map | Right Panel ── */}
       <div className="main-content">
         {/* Left panel: Alert feed */}
-        <div className="left-panel">
+        <div className={`left-panel${mobileTab === 'alerts' ? ' mobile-panel-visible' : ''}`}>
           <AlertFeed alerts={alerts} />
         </div>
 
@@ -82,7 +85,7 @@ export default function App() {
         </div>
 
         {/* Right panel: Details & Latency */}
-        <div className="right-panel">
+        <div className={`right-panel${mobileTab === 'stats' ? ' mobile-panel-visible' : ''}`}>
           <div className="right-panel-tabs">
             <div
               className={`right-tab${rightTab === 'details' ? ' active' : ''}`}
@@ -116,6 +119,31 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {/* ── Mobile Bottom Navigation Bar ── */}
+      <nav className="mobile-nav">
+        <button
+          className={`mobile-nav-tab${mobileTab === 'map' ? ' active' : ''}`}
+          onClick={() => setMobileTab('map')}
+        >
+          <span className="mobile-nav-icon">🗺</span>
+          Map
+        </button>
+        <button
+          className={`mobile-nav-tab${mobileTab === 'alerts' ? ' active' : ''}`}
+          onClick={() => setMobileTab('alerts')}
+        >
+          <span className="mobile-nav-icon">⚠</span>
+          Alerts{alerts.length > 0 ? ` (${alerts.length})` : ''}
+        </button>
+        <button
+          className={`mobile-nav-tab${mobileTab === 'stats' ? ' active' : ''}`}
+          onClick={() => setMobileTab('stats')}
+        >
+          <span className="mobile-nav-icon">📊</span>
+          Stats
+        </button>
+      </nav>
     </div>
   )
 }
