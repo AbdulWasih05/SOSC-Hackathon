@@ -15,6 +15,11 @@ type Counters struct {
 	Alerts     atomic.Uint64
 	InlineHist Hist
 	SweepHist  Hist
+	// Risk-engine gauges (P0), written by the 5s risk sweep. RiskSweepUs is the
+	// last sweep's duration in microseconds; Scored is the size of the scored
+	// active set. Both stay 0 when the risk engine is off.
+	RiskSweepUs atomic.Uint64
+	Scored      atomic.Int64
 }
 
 // NewCounters returns zeroed counters with initialized histograms.
@@ -39,6 +44,8 @@ func (c *Counters) Snapshot(ratePerS float64, activeVessels int) Metrics {
 		},
 		ActiveVessels: activeVessels,
 		AlertsTotal:   c.Alerts.Load(),
+		RiskSweepUs:   float64(c.RiskSweepUs.Load()),
+		ScoredVessels: int(c.Scored.Load()),
 	}
 }
 

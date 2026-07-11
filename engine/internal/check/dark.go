@@ -1,6 +1,8 @@
 package check
 
 import (
+	"time"
+
 	"palkwatch/internal/alert"
 	"palkwatch/internal/geo"
 	"palkwatch/internal/ingest"
@@ -45,6 +47,10 @@ type Sweeper struct {
 	// 10x on the live feed via SetSilenceMultiplier).
 	silenceMult float64
 
+	// risk records a dark factor per emitted dark event when the risk engine is
+	// on; nil otherwise. Set via SetRisk before the first Tick.
+	risk RiskRecorder
+
 	// fired records the LastSeenNs at which we last alerted for an MMSI, so a
 	// dark vessel fires once per silence episode, not every tick. Owned solely
 	// by the sweeper goroutine; no lock needed.
@@ -81,6 +87,10 @@ func NewSweeper(st *state.Shards, cold *state.Cold, zones []*geo.Zone, patrols [
 // SetSilenceMultiplier overrides the dark-event silence threshold. Call before
 // the sweeper's first Tick (the live feed sets RealFeedSilenceMultiplier).
 func (s *Sweeper) SetSilenceMultiplier(m float64) { s.silenceMult = m }
+
+// SetRisk wires the risk factor recorder. Call before the first Tick; the
+// sweeper goroutine is the only reader afterwards.
+func (s *Sweeper) SetRisk(r RiskRecorder) { s.risk = r }
 
 type darkHit struct {
 	mmsi     uint32
@@ -186,6 +196,9 @@ func (s *Sweeper) emit(h darkHit) {
 	}
 
 	s.counters.Alerts.Add(1)
+	if s.risk != nil {
+		s.risk.RecordDark(h.mmsi, time.Now().UnixMilli())
+	}
 	s.sink(alert.Alert{
 		ID:         s.ids.Next(),
 		Kind:       alert.KindDark,

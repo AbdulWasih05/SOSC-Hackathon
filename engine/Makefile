@@ -1,5 +1,5 @@
 # Palk Watch engine. Run targets from the engine/ directory.
-.PHONY: run demo demo-fast live firehose scenario emit-fake bench bench-firehose test
+.PHONY: run demo demo-fast live firehose scenario scenario-risk demo-risk emit-fake bench bench-firehose test
 
 # DEMO: replay the recorded Danish AIS (aisdk) file. Real data, reproducible,
 # fully offline (no network, no venue wifi). This is the demo data source.
@@ -24,6 +24,17 @@ firehose:
 # Run the scripted scenario (Act 2): zone, spoof, dark + intercept in sequence.
 scenario:
 	go run ./cmd/palkwatch -scenario data/scenario.json
+
+# Act 2 with the IUU risk engine on (P0): KADAL SELVI climbs LOW -> ELEVATED ->
+# HIGH -> CRITICAL as evidence accumulates, firing ILLEGAL_FISHING_SUSPECTED then
+# BOARDING_RECOMMENDED with intercepts. The risk-score money shot.
+scenario-risk:
+	go run ./cmd/palkwatch -scenario data/scenario.json -risk
+
+# Recorded Danish AIS replay with the risk engine on: real vessels get scored and
+# colored by tier as they trip zone/spoof/dark checks.
+demo-risk:
+	go run ./cmd/palkwatch -csv data/aisdk-2025-02-27.csv -risk
 
 # Emit schema-valid alerts + metrics + positions for the frontend, no real engine.
 emit-fake:

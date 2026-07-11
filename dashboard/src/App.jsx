@@ -13,6 +13,7 @@ export default function App() {
   const [status, setStatus] = useState('connecting')
   const [rightTab, setRightTab] = useState('details')
   const [selectedMMSI, setSelectedMMSI] = useState(null)
+  const [selectedVesselData, setSelectedVesselData] = useState(null)
   const mapRef = useRef(null)
 
   const onPositions = useCallback((fc) => mapRef.current?.setVessels(fc), [])
@@ -25,6 +26,9 @@ export default function App() {
     setSelectedMMSI(mmsi)
     setRightTab('vessel')
   }, [])
+  // Live risk data (score, tier, factors) for the selected vessel, pushed by
+  // MapView from the raw position frame so the Score Breakdown Drawer stays live.
+  const onVesselData = useCallback((props) => setSelectedVesselData(props), [])
 
   useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus }), [onAlert, onPositions])
 
@@ -67,7 +71,7 @@ export default function App() {
 
         {/* Center: Map */}
         <div className="map-container">
-          <MapView ref={mapRef} onVesselClick={onVesselClick} />
+          <MapView ref={mapRef} onVesselClick={onVesselClick} onVesselData={onVesselData} selectedMMSI={selectedMMSI} />
           <MapLegend />
 
           {status !== 'connected' && (
@@ -111,7 +115,7 @@ export default function App() {
             ) : rightTab === 'latency' ? (
               <Latency metrics={metrics} />
             ) : selectedMMSI ? (
-              <VesselDetails mmsi={selectedMMSI} alerts={alerts} />
+              <VesselDetails mmsi={selectedMMSI} alerts={alerts} vesselData={selectedVesselData} />
             ) : null}
           </div>
         </div>

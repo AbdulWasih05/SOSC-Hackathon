@@ -2,12 +2,25 @@ package check
 
 import (
 	"math"
+	"time"
 
 	"palkwatch/internal/alert"
 	"palkwatch/internal/geo"
 	"palkwatch/internal/ingest"
 	"palkwatch/internal/state"
 )
+
+// RiskRecorder receives a factor event when a check emits an alert. It is set
+// only when the risk engine is on (SetRisk); nil means no scoring. Recording
+// happens per alert, never per message, so the per-message hot path is unchanged
+// (CLAUDE.md rule G4). nowMs is wall-clock milliseconds. The concrete
+// implementation is risk.Store, kept behind this interface so check does not
+// depend on the risk package.
+type RiskRecorder interface {
+	RecordZone(mmsi uint32, nowMs int64)
+	RecordSpoof(mmsi uint32, nowMs int64)
+	RecordDark(mmsi uint32, nowMs int64)
+}
 
 // Processor ties the vessel table, spatial grid, and inline checks together. It
 // is shared by all workers: the grid is read-only after build and the state is
@@ -20,7 +33,12 @@ type Processor struct {
 	counters *alert.Counters
 	ids      *alert.IDGen
 	sink     alert.Sink
+	risk     RiskRecorder // nil unless the risk engine is on
 }
+
+// SetRisk wires the risk factor recorder. Call before Start; the field is then
+// read-only while workers run, so no lock is needed.
+func (p *Processor) SetRisk(r RiskRecorder) { p.risk = r }
 
 // NewProcessor builds a processor. ids is shared with the dark sweeper so alert
 // IDs never collide. sink receives finished alerts (use alert.Discard for
@@ -101,6 +119,9 @@ func (w *Worker) handle(m *ingest.Message) {
 
 func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 	p.counters.Alerts.Add(1)
+	if p.risk != nil {
+		p.risk.RecordZone(m.MMSI, time.Now().UnixMilli())
+	}
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     alert.KindZone,
@@ -117,6 +138,9 @@ func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 
 func (p *Processor) emitSpoof(m *ingest.Message, impliedKn float64) {
 	p.counters.Alerts.Add(1)
+	if p.risk != nil {
+		p.risk.RecordSpoof(m.MMSI, time.Now().UnixMilli())
+	}
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     alert.KindSpoof,

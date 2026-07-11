@@ -41,7 +41,7 @@ function zonesBounds(fc) {
 const CONE_TTL_MS = 15000
 const FLAG_TTL_MS = 9000
 
-const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
+const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selectedMMSI }, ref) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const readyRef = useRef(false)
@@ -51,6 +51,22 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
   const linesRef = useRef(new Map())
   const onVesselClickRef = useRef(onVesselClick)
   onVesselClickRef.current = onVesselClick
+  const onVesselDataRef = useRef(onVesselData)
+  onVesselDataRef.current = onVesselData
+  // Latest position frame (real JS objects, so nested `factors` stays an array;
+  // MapLibre would JSON-stringify it if read back through feature.properties).
+  const latestFCRef = useRef(null)
+  const selectedRef = useRef(selectedMMSI)
+  selectedRef.current = selectedMMSI
+
+  // Look up a vessel's full properties (including the factors array) from the
+  // latest frame. Stable across renders via the refs it closes over.
+  const findVesselProps = (mmsi) => {
+    const feats = latestFCRef.current?.features
+    if (!feats) return null
+    for (const f of feats) if (Number(f.properties?.mmsi) === mmsi) return f.properties
+    return null
+  }
   // Highest-frequency path: vessel position frames. Coalesce them to at most one
   // GeoJSON setData per animation frame so a burst never queues redundant work.
   const pendingVesselsRef = useRef(null)
@@ -144,9 +160,25 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
         type: 'circle',
         source: 'vessels',
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 1.5, 10, 3],
-          'circle-color': '#3e5c76',
-          'circle-opacity': 0.8,
+          // Color by risk tier (P0): scored vessels stand out from the slate
+          // field; unscored vessels keep the default slate.
+          'circle-color': [
+            'match', ['get', 'risk_tier'],
+            'CRITICAL', '#e11d1d',
+            'HIGH', '#e8791a',
+            'ELEVATED', '#d99000',
+            'LOW', '#3e5c76',
+            /* default (no risk_tier) */ '#3e5c76',
+          ],
+          // Scored vessels draw a touch larger so the eye finds them.
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            6, ['match', ['get', 'risk_tier'], 'CRITICAL', 4, 'HIGH', 3.5, 'ELEVATED', 3, 1.5],
+            10, ['match', ['get', 'risk_tier'], 'CRITICAL', 8, 'HIGH', 7, 'ELEVATED', 6, 3],
+          ],
+          'circle-stroke-color': '#0a1128',
+          'circle-stroke-width': ['case', ['has', 'risk_tier'], 1.5, 0],
+          'circle-opacity': 0.85,
         },
       })
 
@@ -197,10 +229,12 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
 
       const handleVesselClick = (e) => {
         if (e.features.length > 0) {
-          const props = e.features[0].properties
-          if (props.mmsi && onVesselClickRef.current) {
-            onVesselClickRef.current(props.mmsi)
-          }
+          const mmsi = Number(e.features[0].properties.mmsi)
+          if (!mmsi) return
+          onVesselClickRef.current?.(mmsi)
+          // Push the full props (with the factors array intact) from the raw
+          // frame, not the click event, which JSON-stringifies nested fields.
+          onVesselDataRef.current?.(findVesselProps(mmsi))
         }
       }
 
@@ -256,7 +290,13 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
         rafRef.current = 0
         const fc = pendingVesselsRef.current
         pendingVesselsRef.current = null
-        if (fc) mapRef.current?.getSource('vessels')?.setData(fc)
+        if (!fc) return
+        mapRef.current?.getSource('vessels')?.setData(fc)
+        latestFCRef.current = fc
+        // Keep the open drawer live: push the selected vessel's fresh score.
+        if (selectedRef.current) {
+          onVesselDataRef.current?.(findVesselProps(Number(selectedRef.current)))
+        }
       })
     },
     showAlert(a) {

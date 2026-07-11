@@ -29,8 +29,14 @@ import (
 	"palkwatch/internal/gen"
 	"palkwatch/internal/geo"
 	"palkwatch/internal/ingest"
+	"palkwatch/internal/risk"
 	"palkwatch/internal/state"
 )
+
+// riskEnabled turns on the IUU risk-scoring engine (P0). Off by default: with it
+// off, the build is byte-for-byte the pre-risk behavior (no factor recording, no
+// risk sweep, no risk fields on the wire). Set by the -risk flag.
+var riskEnabled bool
 
 func main() {
 	var (
@@ -53,6 +59,7 @@ func main() {
 	flag.StringVar(&csv, "csv", "", "aisdk CSV path to replay (selects the recorded-data demo mode)")
 	flag.Float64Var(&speed, "speed", 30, "aisdk replay speed (event seconds per wall second)")
 	flag.IntVar(&total, "n", 1_000_000, "firehose messages pre-generated and looped")
+	flag.BoolVar(&riskEnabled, "risk", false, "enable the IUU risk-scoring engine (5s sweep, tier alerts, risk fields on the wire)")
 	flag.Parse()
 
 	// Mode selection (precedence): -fake, -scenario, -csv, -firehose, else the
@@ -136,13 +143,15 @@ func serveJSONFile(path string) http.HandlerFunc {
 
 // engine bundles the built pieces shared by firehose and scenario modes.
 type engine struct {
-	st       *state.Shards
-	cold     *state.Cold
-	counters *alert.Counters
-	pipe     *ingest.Pipeline
-	proc     *check.Processor
-	sweeper  *check.Sweeper
-	alertCh  chan alert.Alert
+	st          *state.Shards
+	cold        *state.Cold
+	counters    *alert.Counters
+	pipe        *ingest.Pipeline
+	proc        *check.Processor
+	sweeper     *check.Sweeper
+	alertCh     chan alert.Alert
+	store       *risk.Store    // nil unless the risk engine is on
+	riskSweeper *risk.Sweeper  // nil unless the risk engine is on
 }
 
 // buildEngine loads config and wires state, checks, and the worker pool. It does
@@ -177,19 +186,51 @@ func buildEngine(zonesPath, patrolPath string) *engine {
 	proc := check.NewProcessor(st, cold, grid, counters, ids, sink)
 	sweeper := check.NewSweeper(st, cold, zs, patrols, counters, ids, sink)
 
+	// Risk engine (P0): wire the factor recorder into the inline checks and the
+	// dark sweep, and build the 5s risk sweeper. All of this is skipped when the
+	// risk engine is off, so the pre-risk hot path and wire format are unchanged.
+	var store *risk.Store
+	var riskSweeper *risk.Sweeper
+	if riskEnabled {
+		store = risk.NewStore()
+		proc.SetRisk(store)
+		sweeper.SetRisk(store)
+		riskSweeper = risk.NewSweeper(store, st, cold, patrols, counters, ids, sink)
+		log.Info().Msg("risk engine on: 5s IUU scoring sweep, tier-transition alerts")
+	}
+
 	workers := runtime.GOMAXPROCS(0)
 	pipe := ingest.New(counters, workers, workers*2)
 	pipe.Start(func() ingest.BatchHandler { return proc.NewWorker() })
 
-	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh}
+	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh, store: store, riskSweeper: riskSweeper}
 }
 
 // startTelemetry launches the metrics/alert broadcaster, the vessel position
 // feed, and the dark sweep.
 func (e *engine) startTelemetry(ctx context.Context, hub *api.Hub) {
 	go broadcast(ctx, hub, e.counters, e.st, e.alertCh)
-	go broadcastPositions(ctx, hub, e.st)
+	go broadcastPositions(ctx, hub, e.st, e.store)
 	go runSweeper(ctx, e.sweeper)
+	if e.riskSweeper != nil {
+		go runRiskSweeper(ctx, e.riskSweeper)
+	}
+}
+
+// runRiskSweeper scores the active set every 5 seconds (P0). Scoring is a
+// judgment cycle by design, not a per-message reflex; the tick cadence is the
+// scoring latency and is never presented as a millisecond alert.
+func runRiskSweeper(ctx context.Context, rs *risk.Sweeper) {
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			rs.Tick(time.Now().UnixMilli())
+		}
+	}
 }
 
 // runFirehose runs the engine against the in-memory firehose (Act 3).
@@ -321,7 +362,7 @@ func runSweeper(ctx context.Context, sweeper *check.Sweeper) {
 // the firehose the table has ~100k vessels, far more than a map can draw, so it
 // sends a stable MMSI-strided sample plus every alert-runner vessel; in scenario
 // mode the handful of vessels are all sent. Names are omitted (rule 1).
-func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards) {
+func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards, store *risk.Store) {
 	const maxVessels = 3000
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -337,10 +378,22 @@ func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards) {
 			}
 			feats := make([]alert.Feature, 0, maxVessels+64)
 			st.ForEach(func(mmsi uint32, v state.VesselState) {
-				if stride > 1 && mmsi%stride != 0 && mmsi < 420000000 {
+				f := alert.NewFeature(mmsi, v.LastLat, v.LastLon, v.SpeedKn, v.HeadingDeg)
+				scored := false
+				if store != nil {
+					if sc, tier, factors, ok := store.Snapshot(mmsi); ok {
+						f.Properties.RiskScore = sc
+						f.Properties.RiskTier = tier
+						f.Properties.Factors = factors
+						scored = true
+					}
+				}
+				// Scored vessels are always sent (they are the point of the map);
+				// otherwise the stride sample and alert-runner rule apply.
+				if !scored && stride > 1 && mmsi%stride != 0 && mmsi < 420000000 {
 					return
 				}
-				feats = append(feats, alert.NewFeature(mmsi, v.LastLat, v.LastLon, v.SpeedKn, v.HeadingDeg))
+				feats = append(feats, f)
 			})
 			hub.Broadcast(alert.PositionMsg{
 				Type: "positions",
@@ -371,7 +424,7 @@ func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *
 		case <-ctx.Done():
 			return
 		case a := <-alertCh:
-			key := uint64(a.MMSI)<<2 | uint64(feedKindCode(a.Kind))
+			key := uint64(a.MMSI)<<3 | uint64(feedKindCode(a.Kind))
 			nowMs := time.Now().UnixMilli()
 			if last, ok := lastShown[key]; ok && nowMs-last < feedCooldownMs {
 				continue // shown recently; engine already counted it
@@ -391,7 +444,10 @@ func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *
 	}
 }
 
-// feedKindCode maps an alert kind to a 2-bit code for the feed-dedup key.
+// feedKindCode maps an alert kind to a 3-bit code for the feed-dedup key. Each
+// kind gets a distinct code so a BOARDING_RECOMMENDED is never suppressed by a
+// recent ILLEGAL_FISHING_SUSPECTED for the same vessel (they are different
+// escalation steps and both must show).
 func feedKindCode(kind string) uint64 {
 	switch kind {
 	case alert.KindZone:
@@ -400,8 +456,12 @@ func feedKindCode(kind string) uint64 {
 		return 1
 	case alert.KindDark:
 		return 2
-	default:
+	case alert.KindIllegalSuspected:
 		return 3
+	case alert.KindBoarding:
+		return 4
+	default:
+		return 5
 	}
 }
 
