@@ -295,8 +295,14 @@ func runLive(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string) {
 		return
 	}
 	// Real AIS coverage is gappy; raise the dark-event silence threshold to 10x
-	// so ordinary gaps do not masquerade as dark events (CLAUDE.md).
+	// so ordinary gaps do not masquerade as dark events (CLAUDE.md). Observed
+	// live-feed gaps still crossed that formula threshold (~100s for slow
+	// vessels) for ordinary coverage loss, not real disappearances, so the live
+	// feed also gets a 900s (15 min) floor under the threshold. Scenario and
+	// firehose modes are unaffected: their synthetic timing already matches the
+	// spec at 6x with no floor.
 	e.sweeper.SetSilenceMultiplier(check.RealFeedSilenceMultiplier)
+	e.sweeper.SetMinSilenceS(900)
 	log.Info().Str("region", "Dutch / southern North Sea").Msg("engine running: live aisstream.io feed")
 
 	e.startTelemetry(ctx, hub)
@@ -412,7 +418,6 @@ func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards, sto
 // visible feed is deduped.
 func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *state.Shards, alertCh <-chan alert.Alert) {
 	const alertsPerSecCap = 25
-	const feedCooldownMs = 20_000
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -426,7 +431,7 @@ func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *
 		case a := <-alertCh:
 			key := uint64(a.MMSI)<<3 | uint64(feedKindCode(a.Kind))
 			nowMs := time.Now().UnixMilli()
-			if last, ok := lastShown[key]; ok && nowMs-last < feedCooldownMs {
+			if last, ok := lastShown[key]; ok && nowMs-last < feedCooldownMs(a.Kind) {
 				continue // shown recently; engine already counted it
 			}
 			if sent < alertsPerSecCap {
@@ -463,6 +468,18 @@ func feedKindCode(kind string) uint64 {
 	default:
 		return 5
 	}
+}
+
+// feedCooldownMs is the per-(vessel,kind) visible-feed dedup window (the
+// engine's alert counter still counts every detection regardless). SPOOF gets
+// a longer buffer than the 20s default: noisy GPS fixes on the real feed can
+// legitimately re-trip the check for the same vessel every few seconds, which
+// reads as spam even though each detection is a real physics violation.
+func feedCooldownMs(kind string) int64 {
+	if kind == alert.KindSpoof {
+		return 90_000
+	}
+	return 20_000
 }
 
 // seedNames gives the boundary-crossing runner vessels readable names so the

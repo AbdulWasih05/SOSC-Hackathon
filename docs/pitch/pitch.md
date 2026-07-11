@@ -76,11 +76,35 @@ sovereignty and deployability story, not a shortcut.
 The differentiator. Every vessel carries an explainable 0 to 100 suspicion
 score, where every point is a readable fact, not a black-box model output.
 
-Factors accumulate from real signals: a zone violation, a dark event, a spoof, a
-sustained fishing-speed movement pattern, repeat-offender history. Each factor
-decays over time, so the score reflects recent behavior.
+**The weighted scoring module.** Each signal the engine raises adds a weighted,
+time-decayed contribution to the vessel's score:
+
+| Factor | Weight | Status |
+|--------|--------|--------|
+| Protected-zone violation | +30 | shipped |
+| Dark event | +15 first, +10 each additional | shipped |
+| Position spoof / teleport | +15 | shipped |
+| Fishing-movement pattern (trawl / longline / seine) | +20 | detector shipped, scoring next |
+| Repeat offender (3+ flags in 30 days) | +10 | designed |
+
+Every factor decays with a 24-hour half-life over a 48-hour window, computed at
+read time, so the score reflects recent behavior. The score is the sum of the
+live weighted factors, capped at 100, recomputed on a 5-second sweep over only
+the vessels that carry a factor.
+
+Worked example (the live demo): KADAL SELVI enters the marine park (+30), spoofs
+its position (+15), then goes dark four times near the park (+15, +10, +10, +10).
+30 + 15 + 45 = 90, which is CRITICAL and fires a boarding recommendation with the
+intercept solutions attached. On stage you watch each number appear.
 
 Tiers: **0 to 39 LOW, 40 to 64 ELEVATED, 65 to 84 HIGH, 85 plus CRITICAL.**
+
+**Why weighted-and-explainable is our accuracy story.** We do not publish a
+black-box accuracy percentage. In our system, accuracy means every point traces
+to a named, timestamped event a human can verify on the map. The weights are
+hand-calibrated, validated on scripted scenarios, and adjustable in the config;
+production calibration against real enforcement outcomes is the roadmap.
+Incumbents ship an ML score with accuracy caveats; we ship the reasoning.
 
 Click any vessel and the Score Breakdown Drawer shows the score, the tier, and
 the exact factor list with points and timestamps. Crossing into HIGH raises an
@@ -206,7 +230,61 @@ Roadmap, honestly labeled:
 
 ---
 
-## Slide 11, Cut with honor (scope) [Execution]
+## Slide 11, Business model (save money, earn money) [Feasibility, Impact]
+
+Two sides: it cuts the customer's cost, and it earns on a model that is cheap for
+us to serve.
+
+**How it saves the customer money**
+
+- Runs on hardware the station already owns. No cloud bill, no per-message fees,
+  no satellite-data subscription. Near-zero recurring cost to operate.
+- Fewer wasted patrol sorties. A patrol boat burns fuel and crew hours every hour
+  at sea. The explainable risk score sends the scarce boat to the highest-
+  evidence vessel first, so fewer empty interceptions. This is the largest and
+  most measurable ROI: cost per boarding drops.
+- Offline and sovereign. No data leaves the building, so no egress fees and no
+  foreign-cloud compliance cost.
+
+**The stakes (why the buyer cares)**
+
+- IUU fishing is estimated by UN and industry sources to cost 10 to 23 billion
+  USD a year globally. Recovering even a sliver through faster, better-targeted 
+  enforcement dwarfs the price of the software.
+
+**How we earn**
+
+- Per-station license plus annual support and updates. Fits the on-prem, no-cloud
+  ethos.
+- Tiered by scale: single station, regional, national fleet. National coast guard
+  contracts are the anchor deals.
+- Recurring services: calibrating the risk weights against the customer's own
+  enforcement outcomes, zone configuration, training. This turns the "production
+  calibration" roadmap item into billable work.
+- Optional turnkey appliance: a pre-loaded rugged mini-PCC for stations that want
+  plug and play, at a hardware margin.
+- Upsell modules later: radar and SAR ingestion, added alert types
+  (transshipment), each a paid add-on on the same engine.
+
+**Why the margins work**
+
+- The customer hosts it, so we pay no cloud bill per customer. Cost to serve is
+  near zero after the sale; revenue is license plus services. Software margins,
+  not infrastructure drag.
+
+**Who buys**
+
+- National coast guards, fisheries enforcement agencies, marine protected area
+  authorities, port authorities, regional fisheries management organizations, and
+  navies. Conservation funders (EU maritime funds, NGOs) can finance deployments
+  in protected waters.
+
+One line: "We take the customer's operating cost and wasted patrol hours down
+hard, and we earn on licenses and calibration services with software margins."
+
+---
+
+## Slide 12, Cut with honor (scope) [Execution]
 
 We chose depth on three real-time alerts over breadth on more. Deliberately left
 out, designed and specified, cut for scope honesty in a 24-hour build:
@@ -220,7 +298,7 @@ We would rather ship three alert types that work than five that half-work.
 
 ---
 
-## Slide 12, Judge Ju-Jitsu (anticipated questions)
+## Slide 13, Judge Ju-Jitsu (anticipated questions)
 
 **"Global Fishing Watch already exists and is free. Why this?"**
 GFW is an analytical tool with hours of latency. Ours is a tactical, real-time
@@ -250,7 +328,7 @@ Full answer bank: see `docs/pitch/qna.md`.
 
 ---
 
-## Slide 13, Close
+## Slide 14, Close
 
 "The cloud sees the crime hours later, from another continent. We see the silence
 the moment it happens, name the evidence, and hand the patrol a heading, on a

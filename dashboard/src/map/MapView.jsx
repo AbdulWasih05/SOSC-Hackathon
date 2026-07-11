@@ -74,6 +74,8 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
   // Highlight marker: a custom HTML element placed at the selected vessel.
   const highlightMarkerRef = useRef(null)
   const highlightTimerRef  = useRef(null)
+  // Pending retry timers for the engine-served zones/patrols config.
+  const staticRetryTimersRef = useRef([])
 
   useEffect(() => {
     const map = new maplibregl.Map({
@@ -85,8 +87,12 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
     })
     mapRef.current = map
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
+    // Fullscreen targets the whole map-container (this div's parent), not just
+    // the canvas, so the legend and connection notice stay visible in
+    // fullscreen too.
+    map.addControl(new maplibregl.FullscreenControl({ container: containerRef.current.parentElement }), 'bottom-left')
 
-    map.on('load', async () => {
+    map.on('load', () => {
       // Offline land/terrain overview: a local low-resolution coastline drawn
       // under everything else. No external tiles (stays offline, no venue wifi),
       // just a static GeoJSON bundled with the dashboard so land reads as land.
@@ -99,8 +105,13 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
         /* land is decorative; map still works without it */
       }
 
-      // Zones from the engine (single source of truth).
-      try {
+      // Zones and patrols come from the engine (single source of truth), which
+      // may not be up yet or may restart mid-demo. The websocket reconnects on
+      // its own, so these fetches must retry too: a one-shot fetch left the map
+      // with no protected areas until a manual refresh. Retries stop on success
+      // or unmount. Layers insert beneath the vessel dots, so late arrival
+      // cannot cover vessels or alert emphasis.
+      const loadZones = async () => {
         const zones = await fetch(`${HTTP_BASE}/zones`).then((r) => r.json())
         map.addSource('zones', { type: 'geojson', data: zones })
         // Center on the served region (North Sea live feed, or Gulf of Mannar).
@@ -120,17 +131,20 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
               'international-water', '#8a2be2',
               '#e66767' // default
             ],
+            // Projector-legible fill: bumped from the original values (which
+            // washed out on screen) while keeping EEZ the subtlest wash so it
+            // doesn't compete with the named protected-area types.
             'fill-opacity': [
               'match', ['get', 'type'],
-              'ecological-zone', 0.15,
-              'eez', 0.05,
-              'coral-reef', 0.2,
-              'fishing-banned', 0.2,
-              'international-water', 0.1,
-              0.14 // default
+              'ecological-zone', 0.30,
+              'eez', 0.10,
+              'coral-reef', 0.35,
+              'fishing-banned', 0.35,
+              'international-water', 0.20,
+              0.30 // default
             ],
           },
-        })
+        }, 'vessel-dot')
         map.addLayer({
           id: 'zone-line',
           type: 'line',
@@ -145,16 +159,12 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
               'international-water', '#8a2be2',
               '#e66767' // default
             ],
-            'line-width': ['match', ['get', 'type'], 'eez', 1, 1.5],
-            'line-opacity': 0.7,
+            'line-width': ['match', ['get', 'type'], 'eez', 1.5, 2.5],
+            'line-opacity': 0.9,
           },
-        })
-      } catch {
-        /* zones optional; map still works */
+        }, 'vessel-dot')
       }
-
-      // Patrol assets.
-      try {
+      const loadPatrols = async () => {
         const doc = await fetch(`${HTTP_BASE}/patrols`).then((r) => r.json())
         const feats = (doc.patrols || []).map((p) => {
           patrolsRef.current[p.id] = p
@@ -175,9 +185,13 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
             'circle-stroke-color': '#ffffff',
             'circle-stroke-width': 2,
           },
+        }, 'vessel-dot')
+      }
+      const retryUntilLoaded = (load) => {
+        load().catch(() => {
+          const t = setTimeout(() => retryUntilLoaded(load), 2000)
+          staticRetryTimersRef.current.push(t)
         })
-      } catch {
-        /* patrols optional */
       }
 
       // Vessel field.
@@ -277,6 +291,11 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
       map.on('mouseleave', 'flag-dot', resetPointer)
 
       readyRef.current = true
+
+      // Kick off the engine-config loads only now that 'vessel-dot' exists
+      // (their layers insert beneath it).
+      retryUntilLoaded(loadZones)
+      retryUntilLoaded(loadPatrols)
     })
 
     // Expire emphasis layers on a timer.
@@ -301,6 +320,7 @@ const MapView = forwardRef(function MapView({ onVesselClick, onVesselData, selec
 
     return () => {
       clearInterval(sweep)
+      staticRetryTimersRef.current.forEach(clearTimeout)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
       if (highlightMarkerRef.current) highlightMarkerRef.current.remove()

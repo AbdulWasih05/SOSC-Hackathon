@@ -9,6 +9,8 @@
 // suspicion with visible evidence so patrols prioritize, and authorities verify.
 package risk
 
+import "palkwatch/internal/alert"
+
 // Tier thresholds. 0-39 LOW, 40-64 ELEVATED, 65-84 HIGH, 85+ CRITICAL.
 const (
 	TierLow      = "LOW"
@@ -33,6 +35,18 @@ func Tier(score int) string {
 	default:
 		return TierLow
 	}
+}
+
+// SeverityForScore maps a 0-100 suspicion score to an alert severity, staying
+// inside the frozen HIGH|CRITICAL enum: a vessel is CRITICAL only once it reaches
+// the CRITICAL tier (multiple stacked signals), otherwise HIGH. This is what lets
+// per-event alerts (zone, spoof, dark, fishing) label themselves by accumulated
+// suspicion instead of a hard-coded per-kind severity.
+func SeverityForScore(score int) string {
+	if score >= thCritical {
+		return alert.SeverityCritical
+	}
+	return alert.SeverityHigh
 }
 
 // tierRank orders tiers so the sweep can detect an upward crossing.

@@ -371,6 +371,17 @@ body {
   min-width: 0;
 }
 
+/* Fullscreen (map-container is the FullscreenControl target, so the legend
+   and connection notice, both absolutely positioned within it, stay visible
+   in fullscreen too). Explicit size overrides the browser's default UA rule,
+   which author CSS's `position: relative` above would otherwise fight. */
+.map-container:fullscreen,
+.map-container:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg);
+}
+
 .map {
   position: absolute;
   inset: 0;

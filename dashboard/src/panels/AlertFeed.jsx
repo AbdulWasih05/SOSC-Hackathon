@@ -1,9 +1,5 @@
 import { memo, useState } from 'react'
-import { KIND_COLOR, KIND_LABEL } from '../theme.js'
-
-// Only genuine dark-vessel events go in the Alerts tab.
-// Zone violations, spoofing, and fishing patterns are observational — they go to Logs.
-const ALERT_KINDS = new Set(['DARK_EVENT'])
+import { KIND_COLOR, KIND_LABEL, isAlertTab } from '../theme.js'
 
 function detailLine(a) {
   if (a.kind === 'SPOOF_TELEPORT') return `implied ${Math.round(a.detail?.implied_speed_kn ?? 0)} kn`
@@ -54,7 +50,7 @@ function EmptyState({ tab }) {
   return (
     <div className="feed-empty">
       {tab === 'alerts'
-        ? 'No HIGH or CRITICAL alerts detected'
+        ? 'No zone violations detected'
         : 'No observational logs yet'}
     </div>
   )
@@ -63,7 +59,7 @@ function EmptyState({ tab }) {
 function AlertFeed({ alerts, onAlertClick }) {
   const [tab, setTab] = useState('alerts')
 
-  const alertItems = alerts.filter((a) => ALERT_KINDS.has(a.kind))
+  const alertItems = alerts.filter(isAlertTab)
   const logItems   = alerts  // Logs = full audit trail of every event
   const active     = tab === 'alerts' ? alertItems : logItems
 

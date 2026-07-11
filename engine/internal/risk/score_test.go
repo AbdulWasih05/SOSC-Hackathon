@@ -51,11 +51,18 @@ func TestScoreFresh(t *testing.T) {
 		wantCodes []string
 	}{
 		{"empty", Record{}, 0, TierLow, nil},
-		{"zone only", Record{zoneTs: nowMs}, 30, TierLow, []string{CodeZone}},
-		{"zone+dark", Record{zoneTs: nowMs, dark: []int64{nowMs}}, 45, TierElevated, []string{CodeZone, CodeDark}},
-		{"zone+dark+spoof", Record{zoneTs: nowMs, dark: []int64{nowMs}, spoofTs: nowMs}, 60, TierElevated, []string{CodeZone, CodeDark, CodeSpoof}},
-		{"zone+2dark+spoof", Record{zoneTs: nowMs, dark: []int64{nowMs, nowMs}, spoofTs: nowMs}, 70, TierHigh, []string{CodeZone, CodeDark, CodeSpoof}},
-		{"zone+4dark+spoof->critical", Record{zoneTs: nowMs, dark: []int64{nowMs, nowMs, nowMs, nowMs}, spoofTs: nowMs}, 90, TierCritical, []string{CodeZone, CodeDark, CodeSpoof}},
+		// A live geofence violation is CRITICAL by itself (ptsZone > thCritical):
+		// the inline alert is labelled CRITICAL in milliseconds, no second signal.
+		{"zone only -> CRITICAL", Record{zoneTs: nowMs}, 90, TierCritical, []string{CodeZone}},
+		// Fishing inside an MPA is also a zone violation, so the two stack and cap.
+		{"zone+fishing (trawl in MPA)", Record{zoneTs: nowMs, fishTs: nowMs}, 100, TierCritical, []string{CodeZone, CodeFish}},
+		// The behavioural path with no formal zone violation accumulates gradually:
+		// a single dark event is not CRITICAL (the old false-alarm the reweight fixes).
+		{"dark only", Record{dark: []int64{nowMs}}, 15, TierLow, []string{CodeDark}},
+		{"dark+spoof", Record{dark: []int64{nowMs}, spoofTs: nowMs}, 30, TierLow, []string{CodeDark, CodeSpoof}},
+		{"dark+spoof+fishing", Record{dark: []int64{nowMs}, spoofTs: nowMs, fishTs: nowMs}, 50, TierElevated, []string{CodeDark, CodeSpoof, CodeFish}},
+		{"4dark+spoof", Record{dark: []int64{nowMs, nowMs, nowMs, nowMs}, spoofTs: nowMs}, 60, TierElevated, []string{CodeDark, CodeSpoof}},
+		{"6dark+spoof+fishing->critical", Record{dark: []int64{nowMs, nowMs, nowMs, nowMs, nowMs, nowMs}, spoofTs: nowMs, fishTs: nowMs}, 100, TierCritical, []string{CodeDark, CodeSpoof, CodeFish}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -82,10 +89,10 @@ func TestScoreFresh(t *testing.T) {
 // TestScoreDecayAndWindow checks that a factor halves at 24h and drops out of
 // the 48h window.
 func TestScoreDecayAndWindow(t *testing.T) {
-	// Zone violation 24h old: 30 * 0.5 = 15.
+	// Zone violation 24h old: 90 * 0.5 = 45.
 	half := Record{zoneTs: nowMs - halfLifeMs}
-	if got, _ := score(&half, nowMs); got != 15 {
-		t.Errorf("24h-old zone score = %d, want 15", got)
+	if got, _ := score(&half, nowMs); got != 45 {
+		t.Errorf("24h-old zone score = %d, want 45", got)
 	}
 	// Zone violation older than the 48h window: dropped entirely.
 	old := Record{zoneTs: nowMs - windowMs - 1}

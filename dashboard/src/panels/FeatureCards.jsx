@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { compact } from '../theme.js'
+import { compact, isAlertTab } from '../theme.js'
 
 // 6 feature summary cards displayed across the top, mirroring the
 // efficiency / compliance card row in vessel monitoring platforms.
@@ -12,8 +12,8 @@ function FeatureCards({ metrics, alerts }) {
   const processedNum = m.processed_total ?? 0
   const droppedNum = m.dropped_total ?? 0
 
-  // Only DARK_EVENT appears in the Alerts tab — count only those here.
-  const alertsNum = alerts.filter((a) => a.kind === 'DARK_EVENT').length
+  // Same predicate as the Alerts tab, so the card never disagrees with it.
+  const alertsNum = alerts.filter(isAlertTab).length
 
   // Derive threat level from alerts
   const recentCritical = alerts.filter((a) => a.severity === 'CRITICAL').length
@@ -45,12 +45,12 @@ function FeatureCards({ metrics, alerts }) {
         </div>
       </div>
 
-      {/* Card 3: Alerts Fired (HIGH + CRITICAL only) */}
+      {/* Card 3: Alerts Fired (matches the Alerts tab) */}
       <div className="feature-card">
         <div className="card-title">Alerts Fired</div>
         <div className="card-value">{compact(alertsNum)}</div>
         <div className="card-sub">
-          <span className="unit">high · critical only</span>
+          <span className="unit">zone violations</span>
         </div>
       </div>
 

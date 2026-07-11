@@ -12,11 +12,17 @@ const (
 	CodeZone  = "ZONE"
 	CodeDark  = "DARK"
 	CodeSpoof = "SPOOF"
+	CodeFish  = "FISHING"
 
-	ptsZone      = 30 // recent protected-zone violation
+	// A live geofence violation (an MPA entry, or a foreign EEZ cross) is by
+	// itself a CRITICAL event: it alone must push the score past thCritical so the
+	// inline alert is labelled CRITICAL in milliseconds, with no second signal
+	// required. Every other factor is corroborating weight on top of that.
+	ptsZone      = 90 // recent protected-zone violation (alone -> CRITICAL)
 	ptsSpoof     = 15 // recent position spoof / teleport
 	ptsDarkFirst = 15 // first dark event in the window
 	ptsDarkMore  = 10 // each additional dark event in the window
+	ptsFish      = 20 // fishing pattern (trawl/longline/purse) inside a protected zone
 
 	maxDarkKept = 16 // bound per-vessel dark history (a chronic offender)
 	maxScore    = 100
@@ -28,6 +34,7 @@ const (
 type Record struct {
 	zoneTs  int64   // wall ms of the last zone violation (0 = none)
 	spoofTs int64   // wall ms of the last spoof
+	fishTs  int64   // wall ms of the last fishing pattern inside a protected zone
 	dark    []int64 // wall ms of recent dark events, pruned to the window
 
 	// Cached by the 5s sweep for the position broadcaster and the drawer.
@@ -56,30 +63,59 @@ func (s *Store) rec(mmsi uint32) *Record {
 	return r
 }
 
-// RecordZone notes a zone violation for mmsi at wall time nowMs. Called from the
-// inline geofence check only when it emits (per alert, not per message).
-func (s *Store) RecordZone(mmsi uint32, nowMs int64) {
-	s.mu.Lock()
-	s.rec(mmsi).zoneTs = nowMs
-	s.mu.Unlock()
+// scoreNow recomputes the score for r at nowMs, caches it, and returns the score
+// and its derived alert severity. Callers hold s.mu. The freshly-added factor is
+// already on r, so the returned severity reflects the event that just fired: the
+// emitting check labels its own alert by the vessel's accumulated suspicion, not
+// a hard-coded per-kind severity.
+func (s *Store) scoreNow(r *Record, nowMs int64) (int, string) {
+	sc, factors := score(r, nowMs)
+	r.curScore = sc
+	r.curTier = Tier(sc)
+	r.curFactors = factors
+	return sc, SeverityForScore(sc)
 }
 
-// RecordSpoof notes a spoof for mmsi at wall time nowMs.
-func (s *Store) RecordSpoof(mmsi uint32, nowMs int64) {
+// RecordZone notes a zone violation for mmsi at wall time nowMs and returns the
+// vessel's resulting score and severity. Called from the inline geofence check
+// only when it emits (per alert, not per message).
+func (s *Store) RecordZone(mmsi uint32, nowMs int64) (int, string) {
 	s.mu.Lock()
-	s.rec(mmsi).spoofTs = nowMs
-	s.mu.Unlock()
+	defer s.mu.Unlock()
+	r := s.rec(mmsi)
+	r.zoneTs = nowMs
+	return s.scoreNow(r, nowMs)
 }
 
-// RecordDark notes a dark event for mmsi at wall time nowMs.
-func (s *Store) RecordDark(mmsi uint32, nowMs int64) {
+// RecordSpoof notes a spoof for mmsi at wall time nowMs and returns score/severity.
+func (s *Store) RecordSpoof(mmsi uint32, nowMs int64) (int, string) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.rec(mmsi)
+	r.spoofTs = nowMs
+	return s.scoreNow(r, nowMs)
+}
+
+// RecordFishing notes a fishing pattern (trawl/longline/purse) observed inside a
+// protected zone for mmsi at wall time nowMs and returns score/severity.
+func (s *Store) RecordFishing(mmsi uint32, nowMs int64) (int, string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r := s.rec(mmsi)
+	r.fishTs = nowMs
+	return s.scoreNow(r, nowMs)
+}
+
+// RecordDark notes a dark event for mmsi at wall time nowMs and returns score/severity.
+func (s *Store) RecordDark(mmsi uint32, nowMs int64) (int, string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	r := s.rec(mmsi)
 	r.dark = append(r.dark, nowMs)
 	if len(r.dark) > maxDarkKept {
 		r.dark = r.dark[len(r.dark)-maxDarkKept:]
 	}
-	s.mu.Unlock()
+	return s.scoreNow(r, nowMs)
 }
 
 // Snapshot returns the last sweep's cached score, tier and factor breakdown for
@@ -133,6 +169,18 @@ func score(r *Record, nowMs int64) (int, []alert.Factor) {
 		p := roundPts(ptsSpoof, decay(nowMs-r.spoofTs))
 		if p > 0 {
 			factors = append(factors, alert.Factor{Code: CodeSpoof, Label: "Position spoof / teleport", Points: p, TsMs: r.spoofTs})
+			total += p
+		}
+	}
+
+	// FISHING: a trawl/longline/purse pattern observed inside a protected zone.
+	// Fishing behavior is only scored where it is a concern (the check gates
+	// emission on protected-zone membership), so this factor already means
+	// "fishing where it should not be".
+	if inWindow(r.fishTs, nowMs) {
+		p := roundPts(ptsFish, decay(nowMs-r.fishTs))
+		if p > 0 {
+			factors = append(factors, alert.Factor{Code: CodeFish, Label: "Fishing behavior inside protected zone", Points: p, TsMs: r.fishTs})
 			total += p
 		}
 	}

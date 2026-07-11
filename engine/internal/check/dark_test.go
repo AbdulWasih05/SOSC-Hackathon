@@ -47,8 +47,10 @@ func TestDarkEventFires(t *testing.T) {
 		t.Fatalf("want 1 dark alert, got %d", len(*got))
 	}
 	a := (*got)[0]
-	if a.Kind != alert.KindDark || a.Severity != alert.SeverityCritical {
-		t.Fatalf("kind/severity = %s/%s, want DARK_EVENT/CRITICAL", a.Kind, a.Severity)
+	// A lone dark event with no risk recorder is HIGH; CRITICAL is reserved for
+	// vessels whose accumulated suspicion reaches the CRITICAL tier.
+	if a.Kind != alert.KindDark || a.Severity != alert.SeverityHigh {
+		t.Fatalf("kind/severity = %s/%s, want DARK_EVENT/HIGH", a.Kind, a.Severity)
 	}
 	if a.MMSI != mmsi || a.Name != "TEST TRAWLER" {
 		t.Fatalf("mmsi/name = %d/%q", a.MMSI, a.Name)

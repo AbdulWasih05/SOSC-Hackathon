@@ -47,6 +47,13 @@ type Sweeper struct {
 	// 10x on the live feed via SetSilenceMultiplier).
 	silenceMult float64
 
+	// minSilenceS is a floor under the multiplier*expected-interval threshold,
+	// used only on the live feed (SetMinSilenceS). Real aisstream.io coverage
+	// has gaps well past the formula's ~100s threshold for slow vessels that
+	// are not actually dark, just unheard; 0 means no floor (scenario/firehose,
+	// where synthetic timing already matches the spec exactly).
+	minSilenceS float64
+
 	// risk records a dark factor per emitted dark event when the risk engine is
 	// on; nil otherwise. Set via SetRisk before the first Tick.
 	risk RiskRecorder
@@ -88,6 +95,10 @@ func NewSweeper(st *state.Shards, cold *state.Cold, zones []*geo.Zone, patrols [
 // the sweeper's first Tick (the live feed sets RealFeedSilenceMultiplier).
 func (s *Sweeper) SetSilenceMultiplier(m float64) { s.silenceMult = m }
 
+// SetMinSilenceS sets a floor (seconds) under the multiplier*expected-interval
+// threshold. Call before the sweeper's first Tick.
+func (s *Sweeper) SetMinSilenceS(sec float64) { s.minSilenceS = sec }
+
 // SetRisk wires the risk factor recorder. Call before the first Tick; the
 // sweeper goroutine is the only reader afterwards.
 func (s *Sweeper) SetRisk(r RiskRecorder) { s.risk = r }
@@ -109,7 +120,11 @@ func (s *Sweeper) Tick(nowNs int64) {
 			return
 		}
 		silenceS := float64(nowNs-v.LastSeenNs) / 1e9
-		if silenceS <= s.silenceMult*expectedIntervalS(v.SpeedKn) {
+		threshold := s.silenceMult * expectedIntervalS(v.SpeedKn)
+		if threshold < s.minSilenceS {
+			threshold = s.minSilenceS
+		}
+		if silenceS <= threshold {
 			return
 		}
 		if !s.nearZone(v.LastLat, v.LastLon) {
@@ -196,13 +211,18 @@ func (s *Sweeper) emit(h darkHit) {
 	}
 
 	s.counters.Alerts.Add(1)
+	// Severity is derived from the vessel's accumulated suspicion score, not a
+	// hard-coded per-kind value: a lone disappearance is HIGH, and only a vessel
+	// whose stacked signals reach the CRITICAL tier is labelled CRITICAL. A dark
+	// event with no other factors is not, by itself, a critical alarm.
+	score, sev := 0, alert.SeverityHigh
 	if s.risk != nil {
-		s.risk.RecordDark(h.mmsi, time.Now().UnixMilli())
+		score, sev = s.risk.RecordDark(h.mmsi, time.Now().UnixMilli())
 	}
 	s.sink(alert.Alert{
 		ID:         s.ids.Next(),
 		Kind:       alert.KindDark,
-		Severity:   alert.SeverityCritical,
+		Severity:   sev,
 		MMSI:       h.mmsi,
 		Name:       s.cold.Name(h.mmsi),
 		TsMs:       v.LastTsMs,
@@ -210,6 +230,7 @@ func (s *Sweeper) emit(h darkHit) {
 		Lon:        v.LastLon,
 		ZoneID:     s.nearestZoneID(v.LastLat, v.LastLon),
 		Detail:     map[string]any{"silence_s": round1(h.silenceS)},
+		Score:      score,
 		Cone:       cone,
 		Intercepts: intercepts,
 	})

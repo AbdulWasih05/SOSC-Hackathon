@@ -1,8 +1,6 @@
 package risk
 
 import (
-	"math"
-
 	"palkwatch/internal/alert"
 	"palkwatch/internal/geo"
 	"palkwatch/internal/ingest"
@@ -10,10 +8,10 @@ import (
 )
 
 // Sweeper scores the active set on a 5-second tick and raises a tier-transition
-// alert when a vessel first crosses into HIGH (ILLEGAL_FISHING_SUSPECTED) or
-// CRITICAL (BOARDING_RECOMMENDED). Scoring is by design a judgment cycle, not a
-// per-message reflex: the sweep reads factor timestamps the checks recorded and
-// runs entirely off the hot path. The alert is never a millisecond claim.
+// alert when a vessel first crosses into HIGH (ILLEGAL_FISHING_SUSPECTED).
+// Scoring is by design a judgment cycle, not a per-message reflex: the sweep
+// reads factor timestamps the checks recorded and runs entirely off the hot
+// path. The alert is never a millisecond claim.
 type Sweeper struct {
 	store    *Store
 	state    *state.Shards
@@ -52,10 +50,7 @@ func (rs *Sweeper) Tick(nowMs int64) {
 		r.curScore = sc
 		r.curTier = Tier(sc)
 		r.curFactors = factors
-		switch {
-		case crossedUpTo(r.lastTier, r.curTier, TierCritical):
-			out = append(out, transition{mmsi, alert.KindBoarding, alert.SeverityCritical, sc, factors})
-		case crossedUpTo(r.lastTier, r.curTier, TierHigh):
+		if crossedUpTo(r.lastTier, r.curTier, TierHigh) {
 			out = append(out, transition{mmsi, alert.KindIllegalSuspected, alert.SeverityHigh, sc, factors})
 		}
 		r.lastTier = r.curTier
@@ -71,9 +66,8 @@ func (rs *Sweeper) Tick(nowMs int64) {
 	rs.counters.RiskSweepUs.Store(uint64((ingest.NowNs() - start) / 1000))
 }
 
-// emit sends one tier-transition alert. BOARDING_RECOMMENDED carries the live
-// intercept solutions for each patrol asset; both kinds carry the score and the
-// full factor breakdown so the dashboard shows the evidence, not a verdict.
+// emit sends one tier-transition alert, carrying the score and full factor
+// breakdown so the dashboard shows the evidence, not a verdict.
 func (rs *Sweeper) emit(nowMs int64, t transition) {
 	v, ok := rs.state.Load(t.mmsi)
 	a := alert.Alert{
@@ -91,20 +85,6 @@ func (rs *Sweeper) emit(nowMs int64, t transition) {
 		a.Lat = v.LastLat
 		a.Lon = v.LastLon
 	}
-	if t.kind == alert.KindBoarding && ok {
-		a.Intercepts = make([]alert.Intercept, 0, len(rs.patrols))
-		for _, p := range rs.patrols {
-			ic := geo.SolveIntercept(p, v.LastLat, v.LastLon, float64(v.SpeedKn), float64(v.HeadingDeg))
-			a.Intercepts = append(a.Intercepts, alert.Intercept{
-				PatrolID:   ic.PatrolID,
-				HeadingDeg: round1(ic.HeadingDeg),
-				EtaS:       round1(ic.EtaS),
-				Feasible:   ic.Feasible,
-			})
-		}
-	}
 	rs.counters.Alerts.Add(1)
 	rs.sink(a)
 }
-
-func round1(f float64) float64 { return math.Round(f*10) / 10 }

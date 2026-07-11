@@ -36,6 +36,14 @@ export function tierColor(tier) {
   return TIER_COLOR[tier] || TIER_COLOR.LOW
 }
 
+// isAlertTab decides which feed events count as actionable Alerts (the left
+// tab, the Alerts Fired card, and the mobile badge all share this): only
+// ZONE_VIOLATION, at HIGH or CRITICAL severity. Everything else (dark events,
+// spoof, fishing patterns, tier-transition escalations) is a Log.
+export function isAlertTab(a) {
+  return a.kind === 'ZONE_VIOLATION' && (a.severity === 'CRITICAL' || a.severity === 'HIGH')
+}
+
 // Compact number format: 8,523,519 -> 8.5M.
 export function compact(n) {
   if (n == null) return '—'

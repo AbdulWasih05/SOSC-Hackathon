@@ -16,10 +16,14 @@ import (
 // (CLAUDE.md rule G4). nowMs is wall-clock milliseconds. The concrete
 // implementation is risk.Store, kept behind this interface so check does not
 // depend on the risk package.
+// Each Record call returns the vessel's resulting 0-100 suspicion score and the
+// alert severity derived from it, so the emitting check labels its alert by
+// accumulated suspicion rather than a hard-coded per-kind severity.
 type RiskRecorder interface {
-	RecordZone(mmsi uint32, nowMs int64)
-	RecordSpoof(mmsi uint32, nowMs int64)
-	RecordDark(mmsi uint32, nowMs int64)
+	RecordZone(mmsi uint32, nowMs int64) (score int, severity string)
+	RecordSpoof(mmsi uint32, nowMs int64) (score int, severity string)
+	RecordDark(mmsi uint32, nowMs int64) (score int, severity string)
+	RecordFishing(mmsi uint32, nowMs int64) (score int, severity string)
 }
 
 // Processor ties the vessel table, spatial grid, and inline checks together. It
@@ -112,18 +116,21 @@ func (w *Worker) handle(m *ingest.Message) {
 			}
 		}
 		
-		// Fishing Pattern Recognition
-		if kind, ok, detail := FishingPattern(&prev.History, prev.HistoryIdx); ok {
-			illegal := false
-			for _, zi := range w.zoneBuf {
-				z := p.grid.Zones()[zi]
-				if ZoneViolation(z.Kind, z.CountryCode, m.FlagCode) {
-					illegal = true
-					break
-				}
+		// Fishing pattern recognition, gated on zones where fishing by this
+		// vessel would be illegal (any protected area, or a foreign flag inside
+		// an EEZ), so legal fishing never alerts. The cheap zone test runs first
+		// and the ring-buffer analysis is skipped everywhere else, keeping the
+		// hot path cheaper.
+		illegalHere := false
+		for _, zi := range w.zoneBuf {
+			z := p.grid.Zones()[zi]
+			if ZoneViolation(z.Kind, z.CountryCode, m.FlagCode) {
+				illegalHere = true
+				break
 			}
-			
-			if illegal {
+		}
+		if illegalHere {
+			if kind, ok, detail := FishingPattern(&prev.History, prev.HistoryIdx); ok {
 				// Debounce: 30 minutes (1,800,000 ms)
 				if m.TsMs-prev.LastFishingAlertMs > 1_800_000 {
 					p.emitFishing(m, kind, detail)
@@ -144,13 +151,14 @@ func (w *Worker) handle(m *ingest.Message) {
 
 func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 	p.counters.Alerts.Add(1)
+	score, sev := 0, alert.SeverityHigh
 	if p.risk != nil {
-		p.risk.RecordZone(m.MMSI, time.Now().UnixMilli())
+		score, sev = p.risk.RecordZone(m.MMSI, time.Now().UnixMilli())
 	}
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     alert.KindZone,
-		Severity: alert.SeverityHigh,
+		Severity: sev,
 		MMSI:     m.MMSI,
 		Name:     p.cold.Name(m.MMSI),
 		TsMs:     m.TsMs,
@@ -158,38 +166,52 @@ func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 		Lon:      m.Lon,
 		ZoneID:   z.ID,
 		Detail:   map[string]any{"zone_kind": z.Kind},
+		Score:    score,
 	})
 }
 
 func (p *Processor) emitSpoof(m *ingest.Message, impliedKn float64) {
 	p.counters.Alerts.Add(1)
+	score, sev := 0, alert.SeverityHigh
 	if p.risk != nil {
-		p.risk.RecordSpoof(m.MMSI, time.Now().UnixMilli())
+		score, sev = p.risk.RecordSpoof(m.MMSI, time.Now().UnixMilli())
 	}
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     alert.KindSpoof,
-		Severity: alert.SeverityHigh,
+		Severity: sev,
 		MMSI:     m.MMSI,
 		Name:     p.cold.Name(m.MMSI),
 		TsMs:     m.TsMs,
 		Lat:      m.Lat,
 		Lon:      m.Lon,
 		Detail:   map[string]any{"implied_speed_kn": math.Round(impliedKn*10) / 10},
+		Score:    score,
 	})
 }
 
 func (p *Processor) emitFishing(m *ingest.Message, kind string, detail string) {
 	p.counters.Alerts.Add(1)
+	// Fishing is MEDIUM by default (routes to the Logs tab, not the Alerts
+	// card); accumulated suspicion escalates it only at the CRITICAL tier.
+	score, sev := 0, alert.SeverityMedium
+	if p.risk != nil {
+		var rsev string
+		score, rsev = p.risk.RecordFishing(m.MMSI, time.Now().UnixMilli())
+		if rsev == alert.SeverityCritical {
+			sev = rsev
+		}
+	}
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     kind,
-		Severity: alert.SeverityMedium,
+		Severity: sev,
 		MMSI:     m.MMSI,
 		Name:     p.cold.Name(m.MMSI),
 		TsMs:     m.TsMs,
 		Lat:      m.Lat,
 		Lon:      m.Lon,
 		Detail:   map[string]any{"pattern": detail},
+		Score:    score,
 	})
 }

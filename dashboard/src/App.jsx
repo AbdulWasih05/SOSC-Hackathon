@@ -6,7 +6,7 @@ import Latency from './panels/Latency.jsx'
 import FeatureCards from './panels/FeatureCards.jsx'
 import VesselDetails from './panels/VesselDetails.jsx'
 import { connect } from './ws.js'
-import { KIND_COLOR } from './theme.js'
+import { KIND_COLOR, isAlertTab } from './theme.js'
 
 export default function App() {
   const [metrics, setMetrics] = useState(null)
@@ -75,7 +75,7 @@ export default function App() {
         </div>
         <div className="topbar-right">
           <span className="topbar-update">
-            Last update <strong>{status === 'connected' ? 'live' : '—'}</strong>
+            Last update <strong>:</strong>
           </span>
           <span className={`status-badge ${status}`}>
             <span className="status-dot" />
@@ -160,8 +160,8 @@ export default function App() {
           onClick={() => setMobileTab('alerts')}
         >
           <span className="mobile-nav-icon">⚠</span>
-          Alerts{alerts.filter(a => a.kind === 'DARK_EVENT').length > 0
-            ? ` (${alerts.filter(a => a.kind === 'DARK_EVENT').length})`
+          Alerts{alerts.filter(isAlertTab).length > 0
+            ? ` (${alerts.filter(isAlertTab).length})`
             : ''}
         </button>
         <button
