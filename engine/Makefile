@@ -1,11 +1,16 @@
 # Palk Watch engine. Run targets from the engine/ directory.
-.PHONY: run demo live firehose scenario emit-fake bench test
+.PHONY: run demo demo-fast live firehose scenario emit-fake bench test
 
 # DEMO: replay the recorded Danish AIS (aisdk) file. Real data, reproducible,
 # fully offline (no network, no venue wifi). This is the demo data source.
+# Default speed 30x is watchable; demo-fast replays at 300x to push real data
+# through the engine above the 50k/s floor (~55k/s) for the throughput moment.
 run: demo
 demo:
 	go run ./cmd/palkwatch -csv data/aisdk-2025-02-27.csv
+
+demo-fast:
+	go run ./cmd/palkwatch -csv data/aisdk-2025-02-27.csv -speed 300
 
 # Run the real engine on the LIVE aisstream.io feed (North Sea): real vessels,
 # real alerts. Needs APIKey=... in engine/.env (never committed).
