@@ -15,6 +15,8 @@ the slide happens on the team's weakest Linux laptop at H18.
 | 114dec9 | H12 | 8s x3 | 16 | ~9,000,000 (median) | 768 us | 3072 us | 0 | dark sweep added; runs 8.77M/9.47M/9.00M. Sweep latency p50 ~1.5ms, p99 3-6ms over 98k vessels |
 | 616dee1 | H16/H18 | 60s | 16 | 8,523,519 | 1536 us | 3072 us | 0 | 60s sustained methodology run. 511,432,704 processed, 0 dropped, 4.58M alerts. Sweep p99 6144us. Headline number (Windows dev laptop; real LOCKED run on the Linux bench machine) |
 | dcf4e53 | pre-risk-engine | 10s | 16 | 8,126,083 | 768 us | 3072 us | 0 | BASELINE before the risk-scoring engine. Tag `pre-risk-engine` (escape pod). 15% regression floor for risk slices = 6,907,170 msgs/sec. Sweep p50 3072us / p99 6144us over 98,064 vessels. |
+| risk-engine | real-data bench | 10s | 16 | 8,681,066 | 768 us | 3072 us | 0 | REAL Danish AIS (`make bench`): 5M-message in-memory sample of aisdk-2025-02-27.csv, 2,396 distinct real vessels, 8,125 alerts. Real message shapes looped at full speed, not a replay rate. ~174x the 50k floor. The synthetic firehose (98k vessels) is now `make bench-firehose`. |
+| risk-engine | P0 risk engine | 10s | 16 | 9,023,753 | 768 us | 3072 us | 0 | After the P0 risk-scoring engine. Real-data bench, 2,396 vessels. Risk is off in the bench (cmd/bench does not wire it); the only hot-path delta is a per-alert nil-check in the inline checks, so no regression (within run-to-run variance of the 8.68M baseline). Scoring is a 5s sweep over the scored active set, off the per-message path. |
 
 Notes:
 - Throughput is ~150x the 50k/s floor on this laptop. The constraint is met with

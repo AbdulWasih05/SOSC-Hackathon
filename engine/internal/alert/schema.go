@@ -3,14 +3,18 @@
 // in CLAUDE.md. Changing any tag or field requires explicit human approval.
 package alert
 
-// Alert kinds. MMSI is uint32 everywhere (hot-path rule 7).
+// Alert kinds. MMSI is uint32 everywhere (hot-path rule 7). The last two are
+// risk-engine tier-transition alerts (P0), added additively: a pre-risk frontend
+// ignores kinds it does not know.
 const (
-	KindZone         = "ZONE_VIOLATION"
-	KindSpoof        = "SPOOF_TELEPORT"
-	KindDark         = "DARK_EVENT"
-	KindTrawling     = "TRAWLING"
-	KindLonglining   = "LONGLINING"
-	KindPurseSeining = "PURSE_SEINING"
+	KindZone             = "ZONE_VIOLATION"
+	KindSpoof            = "SPOOF_TELEPORT"
+	KindDark             = "DARK_EVENT"
+	KindTrawling         = "TRAWLING"
+	KindLonglining       = "LONGLINING"
+	KindPurseSeining     = "PURSE_SEINING"
+	KindIllegalSuspected = "ILLEGAL_FISHING_SUSPECTED"
+	KindBoarding         = "BOARDING_RECOMMENDED"
 )
 
 // Severities.
@@ -27,6 +31,9 @@ type Envelope struct {
 
 // Alert is one raised alert. cone and intercepts are populated only for
 // DARK_EVENT; detail carries kind-specific fields (e.g. implied_speed_kn).
+// score and factors are populated only on risk-engine tier-transition alerts
+// (ILLEGAL_FISHING_SUSPECTED, BOARDING_RECOMMENDED); both are additive and
+// omitempty, so the pre-risk contract is unchanged for the other kinds.
 type Alert struct {
 	ID         string         `json:"id"`
 	Kind       string         `json:"kind"`
@@ -40,6 +47,19 @@ type Alert struct {
 	Detail     map[string]any `json:"detail"`
 	Cone       *Cone          `json:"cone,omitempty"`
 	Intercepts []Intercept    `json:"intercepts,omitempty"`
+	Score      int            `json:"score,omitempty"`
+	Factors    []Factor       `json:"factors,omitempty"`
+}
+
+// Factor is one line of a risk-score breakdown: a readable, decayed contribution
+// to the 0-100 suspicion score. code is a stable machine key (ZONE, DARK,
+// SPOOF), label is the human string, points is the decayed contribution, and
+// ts_ms is when the underlying event was last observed.
+type Factor struct {
+	Code   string `json:"code"`
+	Label  string `json:"label"`
+	Points int    `json:"points"`
+	TsMs   int64  `json:"ts_ms"`
 }
 
 // Cone is the dead-reckoning uncertainty cone as a scalar (hot-path rule 5).
@@ -61,7 +81,10 @@ type Intercept struct {
 	Feasible   bool    `json:"feasible"`
 }
 
-// Metrics is the once-per-second telemetry frame.
+// Metrics is the once-per-second telemetry frame. risk_sweep_us and
+// scored_vessels are additive risk-engine fields (omitempty): they are 0 and
+// omitted when the risk engine is off, so the pre-risk metrics frame is
+// unchanged.
 type Metrics struct {
 	Type           string       `json:"type"` // always "metrics"
 	IngestedTotal  uint64       `json:"ingested_total"`
@@ -71,6 +94,8 @@ type Metrics struct {
 	LatencyUs      LatencyStats `json:"latency_us"`
 	ActiveVessels  int          `json:"active_vessels"`
 	AlertsTotal    uint64       `json:"alerts_total"`
+	RiskSweepUs    float64      `json:"risk_sweep_us,omitempty"`
+	ScoredVessels  int          `json:"scored_vessels,omitempty"`
 }
 
 // LatencyStats reports inline and sweep latency percentiles in microseconds.
