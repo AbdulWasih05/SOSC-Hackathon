@@ -12,8 +12,8 @@ function FeatureCards({ metrics, alerts }) {
   const processedNum = m.processed_total ?? 0
   const droppedNum = m.dropped_total ?? 0
 
-  // Only HIGH and CRITICAL count as "Alerts" — MEDIUM/LOW are logs, not alerts.
-  const alertsNum = alerts.filter((a) => a.severity === 'HIGH' || a.severity === 'CRITICAL').length
+  // Only DARK_EVENT appears in the Alerts tab — count only those here.
+  const alertsNum = alerts.filter((a) => a.kind === 'DARK_EVENT').length
 
   // Derive threat level from alerts
   const recentCritical = alerts.filter((a) => a.severity === 'CRITICAL').length

@@ -143,8 +143,8 @@ export default function App() {
           onClick={() => setMobileTab('alerts')}
         >
           <span className="mobile-nav-icon">⚠</span>
-          Alerts{alerts.filter(a => a.severity === 'HIGH' || a.severity === 'CRITICAL').length > 0
-            ? ` (${alerts.filter(a => a.severity === 'HIGH' || a.severity === 'CRITICAL').length})`
+          Alerts{alerts.filter(a => a.kind === 'DARK_EVENT').length > 0
+            ? ` (${alerts.filter(a => a.kind === 'DARK_EVENT').length})`
             : ''}
         </button>
         <button

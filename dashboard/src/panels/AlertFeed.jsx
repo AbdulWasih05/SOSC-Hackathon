@@ -1,8 +1,9 @@
 import { memo, useState } from 'react'
 import { KIND_COLOR, KIND_LABEL } from '../theme.js'
 
-// Severities that belong in the Alerts tab (security-grade events).
-const ALERT_SEVERITIES = new Set(['HIGH', 'CRITICAL'])
+// Only genuine dark-vessel events go in the Alerts tab.
+// Zone violations, spoofing, and fishing patterns are observational — they go to Logs.
+const ALERT_KINDS = new Set(['DARK_EVENT'])
 
 function detailLine(a) {
   if (a.kind === 'SPOOF_TELEPORT') return `implied ${Math.round(a.detail?.implied_speed_kn ?? 0)} kn`
@@ -62,7 +63,7 @@ function EmptyState({ tab }) {
 function AlertFeed({ alerts, onAlertClick }) {
   const [tab, setTab] = useState('alerts')
 
-  const alertItems = alerts.filter((a) => ALERT_SEVERITIES.has(a.severity))
+  const alertItems = alerts.filter((a) => ALERT_KINDS.has(a.kind))
   const logItems   = alerts  // Logs = full audit trail of every event
   const active     = tab === 'alerts' ? alertItems : logItems
 
