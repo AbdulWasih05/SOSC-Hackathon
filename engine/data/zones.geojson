@@ -7,18 +7,17 @@
       "properties": {
         "id": "gulf-of-mannar-mnp",
         "name": "Gulf of Mannar Marine National Park",
-        "type": "mpa"
+        "type": "ecological-zone"
       },
       "geometry": {
         "type": "Polygon",
         "coordinates": [
           [
-            [79.00, 8.90],
-            [79.30, 8.90],
-            [79.40, 9.20],
-            [79.10, 9.30],
-            [78.90, 9.10],
-            [79.00, 8.90]
+            [78.1333, 8.5833],
+            [79.5000, 8.5833],
+            [79.5000, 9.4167],
+            [78.1333, 9.4167],
+            [78.1333, 8.5833]
           ]
         ]
       }
@@ -26,8 +25,67 @@
     {
       "type": "Feature",
       "properties": {
+        "id": "coral-reef-1",
+        "name": "Palk Bay Coral Reefs",
+        "type": "coral-reef"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.1333, 9.2500],
+            [79.2833, 9.2500],
+            [79.2833, 9.3000],
+            [79.1333, 9.3000],
+            [79.1333, 9.2500]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "fishing-banned",
+        "name": "No-Take Fishing Zone",
+        "type": "fishing-banned"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.1500, 9.2600],
+            [79.2600, 9.2600],
+            [79.2600, 9.2900],
+            [79.1500, 9.2900],
+            [79.1500, 9.2600]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "international-water",
+        "name": "International Waters",
+        "type": "international-water"
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [80.0500, 10.0833],
+          [79.5833, 9.9500],
+          [79.3767, 9.6692],
+          [79.5117, 9.3633],
+          [79.5333, 9.2167],
+          [79.5333, 9.1000]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "id": "india-eez",
-        "name": "Indian EEZ (Palk Strait / Gulf of Mannar segment)",
+        "name": "Indian EEZ",
         "type": "eez",
         "country": "IN"
       },
@@ -49,7 +107,7 @@
       "type": "Feature",
       "properties": {
         "id": "sri-lanka-eez",
-        "name": "Sri Lankan EEZ (Palk Strait / Gulf of Mannar segment)",
+        "name": "Sri Lankan EEZ",
         "type": "eez",
         "country": "LK"
       },

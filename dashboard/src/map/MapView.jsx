@@ -51,8 +51,24 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
           type: 'fill',
           source: 'zones',
           paint: {
-            'fill-color': ['match', ['get', 'type'], 'mpa', '#e66767', /* eez */ '#3987e5'],
-            'fill-opacity': ['match', ['get', 'type'], 'mpa', 0.14, 0.05],
+            'fill-color': [
+              'match', ['get', 'type'],
+              'ecological-zone', '#1a8a3f',
+              'eez', '#3987e5',
+              'coral-reef', '#ff7b00',
+              'fishing-banned', '#e60000',
+              'international-water', '#8a2be2',
+              '#e66767' // default
+            ],
+            'fill-opacity': [
+              'match', ['get', 'type'],
+              'ecological-zone', 0.15,
+              'eez', 0.05,
+              'coral-reef', 0.2,
+              'fishing-banned', 0.2,
+              'international-water', 0.1,
+              0.14 // default
+            ],
           },
         })
         map.addLayer({
@@ -60,8 +76,16 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
           type: 'line',
           source: 'zones',
           paint: {
-            'line-color': ['match', ['get', 'type'], 'mpa', '#e66767', '#3987e5'],
-            'line-width': ['match', ['get', 'type'], 'mpa', 1.5, 1],
+            'line-color': [
+              'match', ['get', 'type'],
+              'ecological-zone', '#1a8a3f',
+              'eez', '#3987e5',
+              'coral-reef', '#ff7b00',
+              'fishing-banned', '#e60000',
+              'international-water', '#8a2be2',
+              '#e66767' // default
+            ],
+            'line-width': ['match', ['get', 'type'], 'eez', 1, 1.5],
             'line-opacity': 0.7,
           },
         })
@@ -227,7 +251,36 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
     },
   }))
 
-  return <div className="map" ref={containerRef} />
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div className="map" ref={containerRef} />
+      
+      {/* Legend Overlay */}
+      <div className="map-legend">
+        <div className="legend-title">Zones Legend</div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#3987e5', opacity: 0.7 }}></span>
+          EEZ Borders
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#8a2be2', opacity: 0.7 }}></span>
+          International Waters
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#1a8a3f', opacity: 0.7 }}></span>
+          Ecological Zone
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#ff7b00', opacity: 0.7 }}></span>
+          Coral Reefs
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: '#e60000', opacity: 0.7 }}></span>
+          Fishing Banned
+        </div>
+      </div>
+    </div>
+  )
 })
 
 export default MapView
