@@ -1,9 +1,7 @@
 package check
 
 import (
-	"fmt"
 	"math"
-	"sync/atomic"
 
 	"palkwatch/internal/alert"
 	"palkwatch/internal/geo"
@@ -20,14 +18,15 @@ type Processor struct {
 	cold     *state.Cold
 	grid     *geo.Grid
 	counters *alert.Counters
+	ids      *alert.IDGen
 	sink     alert.Sink
-	seq      atomic.Uint64
 }
 
-// NewProcessor builds a processor. sink receives finished alerts (use
-// alert.Discard for benchmarks).
-func NewProcessor(st *state.Shards, cold *state.Cold, grid *geo.Grid, counters *alert.Counters, sink alert.Sink) *Processor {
-	return &Processor{state: st, cold: cold, grid: grid, counters: counters, sink: sink}
+// NewProcessor builds a processor. ids is shared with the dark sweeper so alert
+// IDs never collide. sink receives finished alerts (use alert.Discard for
+// benchmarks).
+func NewProcessor(st *state.Shards, cold *state.Cold, grid *geo.Grid, counters *alert.Counters, ids *alert.IDGen, sink alert.Sink) *Processor {
+	return &Processor{state: st, cold: cold, grid: grid, counters: counters, ids: ids, sink: sink}
 }
 
 // Worker is a per-goroutine handler with private scratch. Create one per worker
@@ -64,6 +63,7 @@ func (w *Worker) handle(m *ingest.Message) {
 			LastLat:    m.Lat,
 			LastLon:    m.Lon,
 			LastTsMs:   m.TsMs,
+			LastSeenNs: m.IngestNs,
 			SpeedKn:    m.SpeedKn,
 			HeadingDeg: m.HeadingDeg,
 			FlagCode:   m.FlagCode,
@@ -100,10 +100,9 @@ func (w *Worker) handle(m *ingest.Message) {
 }
 
 func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
-	id := p.seq.Add(1)
 	p.counters.Alerts.Add(1)
 	p.sink(alert.Alert{
-		ID:       fmt.Sprintf("a-%06d", id),
+		ID:       p.ids.Next(),
 		Kind:     alert.KindZone,
 		Severity: alert.SeverityHigh,
 		MMSI:     m.MMSI,
@@ -117,10 +116,9 @@ func (p *Processor) emitZone(m *ingest.Message, z *geo.Zone) {
 }
 
 func (p *Processor) emitSpoof(m *ingest.Message, impliedKn float64) {
-	id := p.seq.Add(1)
 	p.counters.Alerts.Add(1)
 	p.sink(alert.Alert{
-		ID:       fmt.Sprintf("a-%06d", id),
+		ID:       p.ids.Next(),
 		Kind:     alert.KindSpoof,
 		Severity: alert.SeverityHigh,
 		MMSI:     m.MMSI,

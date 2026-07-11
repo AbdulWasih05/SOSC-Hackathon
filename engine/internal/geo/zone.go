@@ -2,6 +2,7 @@ package geo
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/paulmach/orb"
@@ -56,6 +57,55 @@ func (z *Zone) Contains(lon, lat float64) bool {
 		return false
 	}
 	return planar.PolygonContains(z.Poly, p)
+}
+
+// NewZone builds a zone from a polygon. Used by tests and any programmatic zone
+// source; LoadZones is the file-backed path.
+func NewZone(id, name, kind string, country uint16, poly orb.Polygon) *Zone {
+	return &Zone{
+		ID:          id,
+		Name:        name,
+		Kind:        kind,
+		CountryCode: country,
+		Poly:        poly,
+		bound:       poly.Bound(),
+	}
+}
+
+// DistanceNm returns 0 if (lat, lon) is inside the zone, else the minimum
+// flat-plane distance in nautical miles from the point to the zone boundary.
+// Used by the dark sweep to keep open-ocean coverage gaps from alerting.
+func (z *Zone) DistanceNm(lat, lon float64) float64 {
+	if z.Contains(lon, lat) {
+		return 0
+	}
+	cosLat := math.Cos(lat * degToRad)
+	minM := math.MaxFloat64
+	for _, ring := range z.Poly {
+		for i := 0; i+1 < len(ring); i++ {
+			// Project the segment endpoints to local east/north meters about
+			// the query point, which sits at the origin.
+			ax := (ring[i][0] - lon) * metersPerDegLat * cosLat
+			ay := (ring[i][1] - lat) * metersPerDegLat
+			bx := (ring[i+1][0] - lon) * metersPerDegLat * cosLat
+			by := (ring[i+1][1] - lat) * metersPerDegLat
+			if d := pointSegDistM(0, 0, ax, ay, bx, by); d < minM {
+				minM = d
+			}
+		}
+	}
+	return MetersToNm(minM)
+}
+
+// pointSegDistM is the distance from point (px,py) to segment (ax,ay)-(bx,by).
+func pointSegDistM(px, py, ax, ay, bx, by float64) float64 {
+	dx, dy := bx-ax, by-ay
+	if dx == 0 && dy == 0 {
+		return math.Hypot(px-ax, py-ay)
+	}
+	t := ((px-ax)*dx + (py-ay)*dy) / (dx*dx + dy*dy)
+	t = math.Max(0, math.Min(1, t))
+	return math.Hypot(px-(ax+t*dx), py-(ay+t*dy))
 }
 
 // LoadZones reads a GeoJSON FeatureCollection of Polygon zones. Each feature's

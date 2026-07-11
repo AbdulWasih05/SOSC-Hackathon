@@ -20,14 +20,16 @@ import (
 
 func main() {
 	var (
-		dur   time.Duration
-		total int
-		zones string
-		buf   int
+		dur    time.Duration
+		total  int
+		zones  string
+		patrol string
+		buf    int
 	)
 	flag.DurationVar(&dur, "d", 60*time.Second, "measured run duration")
 	flag.IntVar(&total, "n", 1_000_000, "pre-generated messages looped through the engine")
 	flag.StringVar(&zones, "zones", "data/zones.geojson", "zone geojson path")
+	flag.StringVar(&patrol, "patrol", "data/patrol.json", "patrol config path")
 	flag.IntVar(&buf, "buf", 0, "batch-channel buffer depth (0 = 2*workers)")
 	flag.Parse()
 
@@ -54,11 +56,18 @@ func main() {
 		fmt.Println("failed to load zones:", err)
 		return
 	}
+	patrols, err := geo.LoadPatrols(patrol)
+	if err != nil {
+		fmt.Println("failed to load patrols:", err)
+		return
+	}
 	grid := geo.NewGrid(zs, geo.CellDeg)
 	st := state.New()
 	cold := state.NewCold()
 	counters := alert.NewCounters()
-	proc := check.NewProcessor(st, cold, grid, counters, alert.Discard)
+	ids := alert.NewIDGen()
+	proc := check.NewProcessor(st, cold, grid, counters, ids, alert.Discard)
+	sweeper := check.NewSweeper(st, cold, zs, patrols, counters, ids, alert.Discard)
 
 	fmt.Print("generating firehose... ")
 	msgs := gen.Firehose(total)
@@ -67,9 +76,27 @@ func main() {
 	pipe := ingest.New(counters, workers, buf)
 	pipe.Start(func() ingest.BatchHandler { return proc.NewWorker() })
 
+	// Run the dark sweep once per second alongside the firehose so sweep latency
+	// (the cost of scanning the whole table) is measured. No vessel goes silent
+	// under the firehose, so it finds nothing; it still times the scan.
+	stopSweep := make(chan struct{})
+	go func() {
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-stopSweep:
+				return
+			case <-t.C:
+				sweeper.Tick(ingest.NowNs())
+			}
+		}
+	}()
+
 	t0 := time.Now()
 	pipe.RunFirehose(msgs, dur)
 	pipe.Wait()
+	close(stopSweep)
 	elapsed := time.Since(t0)
 
 	processed := counters.Processed.Load()
@@ -84,7 +111,7 @@ func main() {
 	fmt.Printf("alerts:         %s\n", commas(counters.Alerts.Load()))
 	fmt.Printf("active vessels: %s\n", commas(uint64(st.Len())))
 	fmt.Printf("inline latency: p50 %.0f us  p99 %.0f us\n", counters.InlineHist.Percentile(50), counters.InlineHist.Percentile(99))
-	fmt.Printf("sweep latency:  n/a (dark-event sweep lands H12)\n")
+	fmt.Printf("sweep latency:  p50 %.0f us  p99 %.0f us (full-table scan, %d vessels)\n", counters.SweepHist.Percentile(50), counters.SweepHist.Percentile(99), st.Len())
 	fmt.Println()
 	if rate >= 50000 {
 		fmt.Printf("TARGET MET: %s msgs/sec sustained (>= 50,000).\n", commas(uint64(rate)))

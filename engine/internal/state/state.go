@@ -15,10 +15,14 @@ const shardCount = 64
 // VesselState is the flat per-vessel record. All fields are fixed-size numerics.
 // ZoneMask is a bitset of the zones the vessel was last known to be inside (bit
 // i == zone index i), which makes outside-to-inside transitions a cheap bit op.
+// LastTsMs is the AIS event time (used for implied-speed spoof checks);
+// LastSeenNs is the monotonic time the engine last processed a fix for this
+// vessel (used by the dark sweep to measure silence, immune to event-time skew).
 type VesselState struct {
 	LastLat    float64
 	LastLon    float64
 	LastTsMs   int64
+	LastSeenNs int64
 	SpeedKn    float32
 	HeadingDeg float32
 	FlagCode   uint16

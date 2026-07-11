@@ -29,14 +29,16 @@ import (
 
 func main() {
 	var (
-		fake  bool
-		addr  string
-		zones string
-		total int
+		fake   bool
+		addr   string
+		zones  string
+		patrol string
+		total  int
 	)
 	flag.BoolVar(&fake, "fake", false, "run the contract emitter (schema-valid alerts + metrics, no real engine)")
 	flag.StringVar(&addr, "addr", ":8080", "http listen address for the dashboard websocket")
 	flag.StringVar(&zones, "zones", "data/zones.geojson", "zone geojson path")
+	flag.StringVar(&patrol, "patrol", "data/patrol.json", "patrol config path")
 	flag.IntVar(&total, "n", 1_000_000, "firehose messages pre-generated and looped")
 	flag.Parse()
 
@@ -61,7 +63,7 @@ func main() {
 		log.Info().Msg("fake emitter on: schema-valid alerts + metrics at demo rates")
 		go gen.RunFake(ctx, hub)
 	} else {
-		go runEngine(ctx, hub, zones, total)
+		go runEngine(ctx, hub, zones, patrol, total)
 	}
 
 	<-ctx.Done()
@@ -73,16 +75,22 @@ func main() {
 
 // runEngine builds and runs the real engine against the firehose, broadcasting
 // telemetry over the websocket until ctx is cancelled.
-func runEngine(ctx context.Context, hub *api.Hub, zonesPath string, total int) {
+func runEngine(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string, total int) {
 	zs, err := geo.LoadZones(zonesPath)
 	if err != nil {
 		log.Error().Err(err).Str("path", zonesPath).Msg("failed to load zones; engine not started")
+		return
+	}
+	patrols, err := geo.LoadPatrols(patrolPath)
+	if err != nil {
+		log.Error().Err(err).Str("path", patrolPath).Msg("failed to load patrols; engine not started")
 		return
 	}
 	grid := geo.NewGrid(zs, geo.CellDeg)
 	st := state.New()
 	cold := state.NewCold()
 	counters := alert.NewCounters()
+	ids := alert.NewIDGen()
 
 	// Alerts fire far faster than a human dashboard can read; forward them to a
 	// small buffered channel and drop when full. counters.Alerts stays exact;
@@ -94,7 +102,8 @@ func runEngine(ctx context.Context, hub *api.Hub, zonesPath string, total int) {
 		default:
 		}
 	}
-	proc := check.NewProcessor(st, cold, grid, counters, sink)
+	proc := check.NewProcessor(st, cold, grid, counters, ids, sink)
+	sweeper := check.NewSweeper(st, cold, zs, patrols, counters, ids, sink)
 
 	workers := runtime.GOMAXPROCS(0)
 	pipe := ingest.New(counters, workers, workers*2)
@@ -102,11 +111,27 @@ func runEngine(ctx context.Context, hub *api.Hub, zonesPath string, total int) {
 
 	msgs := gen.Firehose(total)
 	seedNames(cold, msgs)
-	log.Info().Int("messages", len(msgs)).Int("workers", workers).Msg("engine running on firehose")
+	log.Info().Int("messages", len(msgs)).Int("workers", workers).Int("patrols", len(patrols)).Msg("engine running on firehose")
 
 	go broadcast(ctx, hub, counters, st, alertCh)
+	go runSweeper(ctx, sweeper)
 	pipe.RunFirehoseCtx(ctx, msgs)
 	pipe.Wait()
+}
+
+// runSweeper runs the dark-event sweep on a 1s tick (detecting absence is
+// sweep-based by definition; never an inline millisecond claim).
+func runSweeper(ctx context.Context, sweeper *check.Sweeper) {
+	t := time.NewTicker(time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			sweeper.Tick(ingest.NowNs())
+		}
+	}
 }
 
 // broadcast emits a metrics frame every second (rate = messages in the last
