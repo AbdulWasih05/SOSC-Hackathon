@@ -13,6 +13,7 @@ the slide happens on the team's weakest Linux laptop at H18.
 | 9eb6f2f | H4 | 10s | 4 | 7,062,556 | 2 us | 3072 us | 0 | smaller buffer, lower latency, ~7% less throughput |
 | 6622e0f | H6 (v0-boring) | 8s x3 | 16 | ~6,000,000 (median) | 1536 us | 6144 us | 0 | spoof check added; median of 3 runs 5.68M/5.99M/6.00M |
 | 114dec9 | H12 | 8s x3 | 16 | ~9,000,000 (median) | 768 us | 3072 us | 0 | dark sweep added; runs 8.77M/9.47M/9.00M. Sweep latency p50 ~1.5ms, p99 3-6ms over 98k vessels |
+| 616dee1 | H16/H18 | 60s | 16 | 8,523,519 | 1536 us | 3072 us | 0 | 60s sustained methodology run. 511,432,704 processed, 0 dropped, 4.58M alerts. Sweep p99 6144us. Headline number (Windows dev laptop; real LOCKED run on the Linux bench machine) |
 
 Notes:
 - Throughput is ~150x the 50k/s floor on this laptop. The constraint is met with
