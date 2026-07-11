@@ -29,6 +29,12 @@ export default function App() {
     setMobileTab('stats')
   }, [])
 
+  // Fly the map to a clicked alert's vessel position and switch mobile to map.
+  const onAlertClick = useCallback((a) => {
+    mapRef.current?.flyTo(a.lat, a.lon)
+    setMobileTab('map')
+  }, [])
+
   useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus }), [onAlert, onPositions])
 
   const statusLabel = status === 'connected' ? 'Live' : status === 'disconnected' ? 'Offline' : 'Connecting'
@@ -65,7 +71,7 @@ export default function App() {
       <div className="main-content">
         {/* Left panel: Alert feed */}
         <div className={`left-panel${mobileTab === 'alerts' ? ' mobile-panel-visible' : ''}`}>
-          <AlertFeed alerts={alerts} />
+          <AlertFeed alerts={alerts} onAlertClick={onAlertClick} />
         </div>
 
         {/* Center: Map */}

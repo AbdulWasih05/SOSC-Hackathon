@@ -277,6 +277,10 @@ const MapView = forwardRef(function MapView({ onVesselClick }, ref) {
       }
       mapRef.current._redraw()
     },
+    flyTo(lat, lon) {
+      if (!readyRef.current) return
+      mapRef.current?.easeTo({ center: [lon, lat], zoom: 10, duration: 900 })
+    },
   }))
 
   return <div className="map" ref={containerRef} />
