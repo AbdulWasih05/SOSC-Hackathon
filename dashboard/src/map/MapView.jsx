@@ -17,23 +17,76 @@ const EMPTY_STYLE = {
 const CENTER = [79.25, 9.0]
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
-// zonesBounds returns [[minLon,minLat],[maxLon,maxLat]] over every zone polygon
-// so the map centers on whichever region the engine serves (North Sea for the
-// live feed, Gulf of Mannar for the scenario), with no hardcoded region.
-function zonesBounds(fc) {
+// bboxOf returns [minLon,minLat,maxLon,maxLat] over one geometry's coordinates.
+function bboxOf(coords) {
   let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity
-  const visit = (coords) => {
-    if (typeof coords[0] === 'number') {
-      const [lon, lat] = coords
+  const visit = (c) => {
+    if (typeof c[0] === 'number') {
+      const [lon, lat] = c
       if (lon < minLon) minLon = lon
       if (lat < minLat) minLat = lat
       if (lon > maxLon) maxLon = lon
       if (lat > maxLat) maxLat = lat
       return
     }
-    coords.forEach(visit)
+    c.forEach(visit)
   }
-  for (const f of fc.features || []) if (f.geometry?.coordinates) visit(f.geometry.coordinates)
+  visit(coords)
+  return [minLon, minLat, maxLon, maxLat]
+}
+
+// CLUSTER_DEG is the centroid-distance threshold (degrees) for grouping zones
+// into one regional cluster. A real regional zone set (e.g. the North Sea's 3
+// zones, or Gulf of Mannar's 6) sits within a couple of degrees of itself;
+// unrelated far-flung zones (placeholder/reference data from other parts of
+// the world) sit tens of degrees from anything else. 10 degrees comfortably
+// separates the two without needing to hardcode any region.
+const CLUSTER_DEG = 10
+
+// zonesBounds returns [[minLon,minLat],[maxLon,maxLat]] over the single
+// largest cluster of mutually-nearby zones, so the map centers on whichever
+// region the engine actually serves (North Sea for the live feed, Gulf of
+// Mannar for the scenario) even when the zone response also carries unrelated
+// reference zones from elsewhere in the world. Fitting to every zone's raw
+// bounding box would zoom out to fit them all, shrinking the real region (and
+// every vessel in it) to a few pixels.
+function zonesBounds(fc) {
+  const feats = (fc.features || []).filter((f) => f.geometry?.coordinates)
+  if (feats.length === 0) return null
+
+  const boxes = feats.map((f) => bboxOf(f.geometry.coordinates))
+  const centroids = boxes.map(([minLon, minLat, maxLon, maxLat]) => [(minLon + maxLon) / 2, (minLat + maxLat) / 2])
+
+  // Union-find over centroid proximity: cheap at this scale (a handful of
+  // zones), so a plain O(n^2) adjacency pass is fine.
+  const parent = centroids.map((_, i) => i)
+  const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])))
+  const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb }
+  for (let i = 0; i < centroids.length; i++) {
+    for (let j = i + 1; j < centroids.length; j++) {
+      const dLon = centroids[i][0] - centroids[j][0]
+      const dLat = centroids[i][1] - centroids[j][1]
+      if (Math.hypot(dLon, dLat) <= CLUSTER_DEG) union(i, j)
+    }
+  }
+
+  const clusterSizes = new Map()
+  for (let i = 0; i < centroids.length; i++) {
+    const root = find(i)
+    clusterSizes.set(root, (clusterSizes.get(root) || 0) + 1)
+  }
+  let bestRoot = 0, bestSize = 0
+  for (const [root, size] of clusterSizes) if (size > bestSize) { bestRoot = root; bestSize = size }
+
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity
+  for (let i = 0; i < boxes.length; i++) {
+    if (find(i) !== bestRoot) continue
+    const [bMinLon, bMinLat, bMaxLon, bMaxLat] = boxes[i]
+    if (bMinLon < minLon) minLon = bMinLon
+    if (bMinLat < minLat) minLat = bMinLat
+    if (bMaxLon > maxLon) maxLon = bMaxLon
+    if (bMaxLat > maxLat) maxLat = bMaxLat
+  }
   return Number.isFinite(minLon) ? [[minLon, minLat], [maxLon, maxLat]] : null
 }
 
