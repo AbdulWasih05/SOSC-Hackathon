@@ -1,20 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════════
-   Palk Watch Dashboard — Vessel-Insight Style
-   Light/professional theme inspired by maritime monitoring platforms.
-   Clean, data-dense, not "AI-looking."
+   Palk Watch Dashboard — Brutal Minimalism · Sand & Water
+   Beige + blue accents. Monospace. Hard edges. Water animations.
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
   --bg: #e6e2d3;
   --surface: #f4f1e1;
-  --surface-alt: #d4cfba;
+  --surface-alt: #ddd8c4;
   --border: #0a1128;
-  --border-light: #0a1128;
+  --border-light: rgba(10, 17, 40, 0.18);
   --ink: #0a1128;
   --ink-2: #202b4d;
-  --ink-3: #3b4b73;
+  --ink-3: #5a6577;
   --accent: #003cff;
-  --accent-light: #b3c6ff;
+  --accent-light: rgba(0, 60, 255, 0.08);
   --accent-hover: #002ab3;
   --crit: #e60000;
   --crit-bg: #ffd1d1;
@@ -22,8 +21,8 @@
   --warn-bg: #ffe8d1;
   --success: #00a822;
   --success-bg: #d1ffd6;
-  --shadow-sm: 2px 2px 0 #0a1128;
-  --shadow-md: 4px 4px 0 #0a1128;
+  --shadow-sm: 2px 2px 0 rgba(10, 17, 40, 0.12);
+  --shadow-md: 4px 4px 0 rgba(10, 17, 40, 0.10);
   --radius: 0px;
   --radius-lg: 0px;
   --font: 'Space Mono', 'Courier New', monospace, sans-serif;
@@ -46,7 +45,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -60,18 +59,22 @@ body {
   overflow: hidden;
 }
 
+
+
 /* ── Top Header Bar ──────────────────────────────────────────────── */
 
 .topbar {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 20px;
+  padding: 0 24px;
   height: 56px;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
   flex-shrink: 0;
   z-index: 10;
+  position: relative;
+  overflow: hidden;
 }
 
 .brand {
@@ -79,27 +82,31 @@ body {
   align-items: center;
   gap: 10px;
   font-weight: 700;
-  font-size: 16px;
-  letter-spacing: 0.5px;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   color: var(--ink);
   white-space: nowrap;
 }
 
 .brand-icon {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   background: var(--accent);
-  border-radius: 8px;
+  border-radius: 0px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
+  letter-spacing: 1px;
+  border: 2px solid var(--ink);
+  cursor: pointer;
 }
 
 .topbar-sep {
-  width: 1px;
+  width: 2px;
   height: 28px;
   background: var(--border);
   flex-shrink: 0;
@@ -109,7 +116,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-2);
 }
 
@@ -118,22 +125,23 @@ body {
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
-  background: var(--surface-alt);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
+  background: transparent;
+  border: 2px solid var(--border);
+  border-radius: 0px;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--ink-2);
+  letter-spacing: 1px;
+  color: var(--ink);
   white-space: nowrap;
 }
 
 .topbar-route {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--ink);
   white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 
 .topbar-right {
@@ -148,25 +156,30 @@ body {
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
+  border-radius: 0px;
+  border: 2px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .status-badge.connected {
   background: var(--success-bg);
   color: var(--success);
+  border-color: var(--success);
 }
 
 .status-badge.disconnected {
   background: var(--crit-bg);
   color: var(--crit);
+  border-color: var(--crit);
 }
 
 .status-badge.connecting {
   background: var(--warn-bg);
   color: var(--warn);
+  border-color: var(--warn);
 }
 
 .status-dot {
@@ -181,25 +194,26 @@ body {
 }
 
 @keyframes pulse-green {
-
   0%,
   100% {
     opacity: 1;
+    transform: scale(1);
   }
-
   50% {
-    opacity: 0.4;
+    opacity: 0.3;
+    transform: scale(0.7);
   }
 }
 
 .topbar-update {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-3);
+  letter-spacing: 0.3px;
 }
 
 .topbar-update strong {
   color: var(--success);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ── Feature Cards Row ───────────────────────────────────────────── */
@@ -207,9 +221,9 @@ body {
 .cards-row {
   display: flex;
   gap: 0;
-  padding: 0 20px;
+  padding: 0;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -217,10 +231,10 @@ body {
 .feature-card {
   flex: 1;
   min-width: 150px;
-  padding: 14px 18px;
+  padding: 16px 20px;
   border-right: 1px solid var(--border-light);
   cursor: default;
-  transition: background 0.15s;
+  transition: background 0.12s;
   position: relative;
 }
 
@@ -229,7 +243,7 @@ body {
 }
 
 .feature-card:hover {
-  background: var(--surface-alt);
+  background: var(--accent-light);
 }
 
 .feature-card.active {
@@ -242,36 +256,37 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 3px;
   background: var(--accent);
 }
 
 .card-section-label {
   position: absolute;
-  top: 12px;
-  left: 18px;
-  font-size: 9px;
+  top: 4px;
+  right: 12px;
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 1.5px;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--ink-3);
-  padding: 0 3px;
-  background: var(--surface);
-  transform: translateY(-50%);
+  color: var(--accent);
+  padding: 1px 4px;
+  border: 1px solid var(--accent);
 }
 
 .card-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
   margin-bottom: 6px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
 }
 
 .card-value {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -294,13 +309,13 @@ body {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: 6px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
 }
 
 .card-sub .delta {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .card-sub .delta.up {
@@ -313,6 +328,8 @@ body {
 
 .card-sub .unit {
   color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* ── Main Content Area ───────────────────────────────────────────── */
@@ -334,8 +351,8 @@ body {
   overflow-y: auto;
   padding: 16px;
   gap: 12px;
-  background: var(--surface-alt);
-  border-right: 1px solid var(--border);
+  background: var(--surface);
+  border-right: 2px solid var(--border);
 }
 
 /* ── Center Map ──────────────────────────────────────────────────── */
@@ -351,6 +368,11 @@ body {
   inset: 0;
 }
 
+/* Water wave along map bottom edge */
+.map-water {
+  z-index: 2;
+}
+
 /* Map notice overlay */
 .map-notice {
   position: absolute;
@@ -360,19 +382,17 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 2px solid var(--border);
   box-shadow: var(--shadow-md);
-  max-width: 300px;
+  max-width: 320px;
 }
 
 .notice-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   background: var(--accent);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -380,17 +400,18 @@ body {
   color: #fff;
   font-size: 12px;
   font-weight: 700;
+  border: 1px solid var(--ink);
 }
 
 .notice-text {
   font-size: 12px;
   color: var(--ink-2);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .notice-text strong {
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ── Right Panel (Vessel Details / Latency) ──────────────────────── */
@@ -402,32 +423,37 @@ body {
   flex-direction: column;
   overflow-y: auto;
   background: var(--surface);
-  border-left: 1px solid var(--border);
+  border-left: 2px solid var(--border);
 }
 
 .right-panel-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border);
-  padding: 0 16px;
+  border-bottom: 2px solid var(--border);
+  padding: 0;
 }
 
 .right-tab {
   padding: 12px 16px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--ink-3);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  border-bottom: 3px solid transparent;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  user-select: none;
 }
 
 .right-tab:hover {
-  color: var(--ink-2);
+  color: var(--ink);
+  background: var(--accent-light);
 }
 
 .right-tab.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
+  background: var(--accent-light);
 }
 
 .right-panel-body {
@@ -443,8 +469,7 @@ body {
 
 .panel {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 2px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
 
@@ -457,20 +482,21 @@ body {
 }
 
 .panel-title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: 1.2px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
   color: var(--ink);
 }
 
 .panel-title-count {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-3);
-  background: var(--surface-alt);
-  padding: 1px 7px;
-  border-radius: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  padding: 2px 8px;
+  border-radius: 0px;
+  border: 1px solid var(--ink);
 }
 
 .panel-body {
@@ -490,15 +516,17 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   max-height: 100%;
 }
 
 .feed-empty {
   color: var(--ink-3);
-  font-size: 13px;
-  padding: 16px 14px;
+  font-size: 12px;
+  padding: 20px 14px;
   text-align: center;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
 }
 
 .feed-row {
@@ -507,11 +535,12 @@ body {
   gap: 10px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-light);
-  transition: background 0.12s;
+  transition: background 0.1s;
+  cursor: default;
 }
 
 .feed-row:hover {
-  background: var(--surface-alt);
+  background: var(--accent-light);
 }
 
 .feed-row:last-child {
@@ -521,7 +550,7 @@ body {
 .feed-indicator {
   width: 4px;
   align-self: stretch;
-  border-radius: 2px;
+  border-radius: 0;
   flex-shrink: 0;
 }
 
@@ -538,13 +567,14 @@ body {
 
 .feed-kind {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .feed-name {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -554,18 +584,19 @@ body {
 .feed-crit {
   margin-left: auto;
   font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
   color: #fff;
   background: var(--crit);
-  border-radius: 3px;
+  border-radius: 0;
   padding: 2px 6px;
   flex-shrink: 0;
+  border: 1px solid var(--ink);
 }
 
 .feed-detail {
   margin-top: 3px;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
@@ -578,19 +609,20 @@ body {
 }
 
 .ic {
-  font-size: 11px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--success);
-  border: 1px solid rgba(26, 138, 63, 0.3);
+  border: 1px solid var(--success);
   background: var(--success-bg);
-  border-radius: 4px;
+  border-radius: 0px;
   padding: 2px 6px;
-  font-weight: 500;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .ic.infeasible {
   color: var(--crit);
-  border-color: rgba(214, 59, 59, 0.3);
+  border-color: var(--crit);
   background: var(--crit-bg);
 }
 
@@ -604,31 +636,34 @@ body {
 
 .lat-group-title {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--ink-2);
   margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .lat-row {
   display: grid;
-  grid-template-columns: 30px 1fr 60px;
+  grid-template-columns: 30px 1fr 70px;
   align-items: center;
   gap: 8px;
   margin: 5px 0;
 }
 
 .lat-name {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--ink-3);
   text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .lat-track {
-  height: 6px;
-  background: var(--surface-alt);
+  height: 8px;
+  background: var(--bg);
   border: 1px solid var(--border-light);
-  border-radius: 3px;
+  border-radius: 0;
   overflow: hidden;
 }
 
@@ -636,15 +671,15 @@ body {
   display: block;
   height: 100%;
   background: var(--accent);
-  border-radius: 3px;
+  border-radius: 0;
   transition: width 0.4s ease;
 }
 
 .lat-val {
-  font-size: 12px;
+  font-size: 11px;
   text-align: right;
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -664,55 +699,111 @@ body {
 }
 
 .stats-table td {
-  padding: 9px 0;
-  font-size: 13px;
+  padding: 10px 0;
+  font-size: 12px;
 }
 
 .stats-table td:first-child {
-  color: var(--ink-2);
-  font-weight: 400;
+  color: var(--ink-3);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
 }
 
 .stats-table td:nth-child(2) {
   text-align: right;
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
 
 .stats-table td:nth-child(3) {
   text-align: right;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--ink-3);
   padding-left: 8px;
   font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* ── Risk badge ──────────────────────────────────────────────────── */
 
 .risk-badge {
   display: inline-block;
-  padding: 2px 10px;
-  border-radius: 3px;
+  padding: 3px 12px;
+  border-radius: 0px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  border: 2px solid;
 }
 
 .risk-badge.low {
   background: var(--success-bg);
   color: var(--success);
+  border-color: var(--success);
 }
 
 .risk-badge.medium {
   background: var(--warn-bg);
   color: var(--warn);
+  border-color: var(--warn);
 }
 
 .risk-badge.high {
   background: var(--crit-bg);
   color: var(--crit);
+  border-color: var(--crit);
+}
+
+/* ── Vessel Details ──────────────────────────────────────────────── */
+
+.vessel-details {
+  position: relative;
+}
+
+.vessel-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 2px solid var(--border);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 0.1s;
+}
+
+.vessel-close:hover {
+  background: var(--crit-bg);
+  border-color: var(--crit);
+  color: var(--crit);
+}
+
+.vessel-no-alerts {
+  border: 2px solid var(--success);
+  background: var(--success-bg);
+  color: var(--success);
+  font-weight: 700;
+}
+
+.vessel-alert-row {
+  border: 1px solid var(--border-light);
+  background: var(--surface);
+}
+
+.vessel-alert-row:hover {
+  background: var(--accent-light);
 }
 
 /* ── HUD inline (in right panel) ─────────────────────────────────── */
@@ -734,13 +825,16 @@ body {
 }
 
 .hud-label {
-  font-size: 13px;
-  color: var(--ink-2);
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .hud-value {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
@@ -757,9 +851,9 @@ body {
 
 .maplibregl-ctrl-group {
   background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
+  border: 2px solid var(--border) !important;
   box-shadow: var(--shadow-sm) !important;
-  border-radius: var(--radius) !important;
+  border-radius: 0px !important;
 }
 
 .maplibregl-ctrl-group button {
@@ -770,7 +864,7 @@ body {
 /* ── Scrollbar ───────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -778,12 +872,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background: var(--accent);
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--ink-3);
+  background: var(--ink);
 }
 
 /* ── Responsive: stack panels below map on narrow screens ────────── */
@@ -807,7 +901,7 @@ body {
     max-height: 35vh;
     border-left: none;
     border-right: none;
-    border-top: 1px solid var(--border);
+    border-top: 2px solid var(--border);
   }
 
   .map-container {
