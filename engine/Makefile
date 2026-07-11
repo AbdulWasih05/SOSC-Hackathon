@@ -1,9 +1,20 @@
 # Palk Watch engine. Run targets from the engine/ directory.
-.PHONY: run scenario emit-fake bench test
+.PHONY: run demo live firehose scenario emit-fake bench test
 
-# Run the real engine on the firehose (Act 3): alerts, metrics, positions over ws.
-run:
+# DEMO: replay the recorded Danish AIS (aisdk) file. Real data, reproducible,
+# fully offline (no network, no venue wifi). This is the demo data source.
+run: demo
+demo:
+	go run ./cmd/palkwatch -csv data/aisdk-2025-02-27.csv
+
+# Run the real engine on the LIVE aisstream.io feed (North Sea): real vessels,
+# real alerts. Needs APIKey=... in engine/.env (never committed).
+live:
 	go run ./cmd/palkwatch
+
+# Run the real engine on the in-memory firehose (Act 3 stress feed / 50k theatre).
+firehose:
+	go run ./cmd/palkwatch -firehose
 
 # Run the scripted scenario (Act 2): zone, spoof, dark + intercept in sequence.
 scenario:

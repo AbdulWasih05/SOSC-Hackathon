@@ -19,6 +19,11 @@ func TestSpoofTeleport(t *testing.T) {
 		{"slow 21kn", 9.001, lon0, 0, 10_000, false, 0}, // ~111 m in 10 s
 		{"58kn under threshold", 9.0027, lon0, 0, 10_000, false, 0},
 		{"62kn over threshold", 9.0029, lon0, 0, 10_000, true, 60},
+		// At 1 s timestamp resolution ~67 m of GPS jitter implies ~130 kn, but the
+		// interval is too short to trust: not a spoof (dt < 3 s minimum).
+		{"1s jitter under min interval", 9.0006, lon0, 0, 1_000, false, 0},
+		// ~145 m over a trustworthy 4 s interval is a real >60 kn jump (~70 kn).
+		{"short jump over 4s is spoof", 9.0013, lon0, 0, 4_000, true, 60},
 		{"teleport 60nm in 60s", 10.0, lon0, 0, 60_000, true, 60},
 		{"dup 60nm same timestamp", 10.0, lon0, 5_000, 5_000, true, 0},
 		{"far apart, slow, stale (30kn over 2h)", 10.0, lon0, 0, 7_200_000, false, 0},

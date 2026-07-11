@@ -1,7 +1,12 @@
-// Command palkwatch is the single Palk Watch binary. With -fake it runs the H1
-// contract emitter. Otherwise it runs the real engine: firehose -> ingest ->
-// state -> inline checks (geofence, spoof) -> alert bus, broadcasting metrics
-// once per second and alerts as they fire over the dashboard websocket.
+// Command palkwatch is the single Palk Watch binary. The producer is swappable;
+// the engine is the same everywhere. Modes: -csv replays a recorded Danish AIS
+// (aisdk) file (the offline demo: real data, reproducible, no network); the
+// default runs the live aisstream.io feed (North Sea); -firehose runs the
+// in-memory stress feed (the 50k benchmark theatre); -scenario plays a scripted
+// timeline; -fake runs the contract emitter with no engine. Every mode feeds the
+// same pipeline: ingest -> state -> inline checks (geofence, spoof) -> alert bus,
+// plus the 1s dark sweep, broadcasting metrics once per second and alerts as they
+// fire over the dashboard websocket.
 package main
 
 import (
@@ -30,19 +35,52 @@ import (
 func main() {
 	var (
 		fake     bool
+		firehose bool
 		addr     string
 		zones    string
 		patrol   string
 		scenario string
+		csv      string
+		speed    float64
 		total    int
 	)
 	flag.BoolVar(&fake, "fake", false, "run the contract emitter (schema-valid alerts + metrics, no real engine)")
+	flag.BoolVar(&firehose, "firehose", false, "run the in-memory firehose (Act 3 stress feed) instead of the live feed")
 	flag.StringVar(&addr, "addr", ":8080", "http listen address for the dashboard websocket")
-	flag.StringVar(&zones, "zones", "data/zones.geojson", "zone geojson path")
-	flag.StringVar(&patrol, "patrol", "data/patrol.json", "patrol config path")
-	flag.StringVar(&scenario, "scenario", "", "scenario json path (empty = firehose mode)")
+	flag.StringVar(&zones, "zones", "", "zone geojson path (default follows the mode's region)")
+	flag.StringVar(&patrol, "patrol", "", "patrol config path (default follows the mode's region)")
+	flag.StringVar(&scenario, "scenario", "", "scenario json path (selects scenario mode)")
+	flag.StringVar(&csv, "csv", "", "aisdk CSV path to replay (selects the recorded-data demo mode)")
+	flag.Float64Var(&speed, "speed", 30, "aisdk replay speed (event seconds per wall second)")
 	flag.IntVar(&total, "n", 1_000_000, "firehose messages pre-generated and looped")
 	flag.Parse()
+
+	// Mode selection (precedence): -fake, -scenario, -csv, -firehose, else the
+	// default live aisstream.io feed. Zone/patrol defaults follow the mode region:
+	// Denmark for the CSV replay, North Sea for the live feed, Gulf of Mannar for
+	// the scripted scenario / firehose.
+	csvMode := csv != ""
+	live := !firehose && !fake && !csvMode && scenario == ""
+	if zones == "" {
+		switch {
+		case csvMode:
+			zones = "data/zones-denmark.geojson"
+		case live:
+			zones = "data/zones-northsea.geojson"
+		default:
+			zones = "data/zones.geojson"
+		}
+	}
+	if patrol == "" {
+		switch {
+		case csvMode:
+			patrol = "data/patrol-denmark.json"
+		case live:
+			patrol = "data/patrol-northsea.json"
+		default:
+			patrol = "data/patrol.json"
+		}
+	}
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
@@ -71,8 +109,12 @@ func main() {
 		go gen.RunFake(ctx, hub)
 	case scenario != "":
 		go runScenario(ctx, hub, zones, patrol, scenario)
-	default:
+	case csvMode:
+		go runAISDK(ctx, hub, zones, patrol, csv, speed)
+	case firehose:
 		go runFirehose(ctx, hub, zones, patrol, total)
+	default:
+		go runLive(ctx, hub, zones, patrol)
 	}
 
 	<-ctx.Done()
@@ -191,6 +233,74 @@ func runScenario(ctx context.Context, hub *api.Hub, zonesPath, patrolPath, scena
 	e.pipe.Wait()
 }
 
+// northSeaBox is the aisstream.io subscription bounding box for the live feed:
+// the Dutch / southern North Sea, where community AIS coverage is densest.
+// aisstream orders coordinates [lat, lon] (not GeoJSON order).
+var northSeaBox = [][]float64{{51.0, 2.0}, {54.0, 7.0}}
+
+// runLive runs the engine against the live aisstream.io feed. Real vessels flow
+// through the same ingest -> checks -> alert path as the synthetic modes; the
+// only difference is the producer. Volume is a real regional rate (tens/sec),
+// far below the firehose; the 50k throughput floor is proven by the benchmark,
+// not this mode.
+func runLive(ctx context.Context, hub *api.Hub, zonesPath, patrolPath string) {
+	key := gen.LoadAPIKey()
+	if key == "" {
+		log.Error().Msg("no aisstream.io API key found; set APIKey=... in engine/.env or export AISSTREAM_API_KEY. Falling back requires -firehose, -scenario, or -fake.")
+		return
+	}
+	e := buildEngine(zonesPath, patrolPath)
+	if e == nil {
+		return
+	}
+	// Real AIS coverage is gappy; raise the dark-event silence threshold to 10x
+	// so ordinary gaps do not masquerade as dark events (CLAUDE.md).
+	e.sweeper.SetSilenceMultiplier(check.RealFeedSilenceMultiplier)
+	log.Info().Str("region", "Dutch / southern North Sea").Msg("engine running: live aisstream.io feed")
+
+	e.startTelemetry(ctx, hub)
+	src := make(chan ingest.Message, 256)
+	go func() {
+		gen.RunLive(ctx, gen.LiveConfig{APIKey: key, BoundingBox: northSeaBox}, src, e.cold.SetName)
+		close(src)
+	}()
+	e.pipe.RunSource(src)
+	e.pipe.Wait()
+}
+
+// runAISDK runs the engine against a recorded Danish AIS CSV (the offline demo:
+// real data, reproducible, no network). Same pipeline as every other mode; the
+// producer streams and replays the file on a compressed event-time schedule.
+func runAISDK(ctx context.Context, hub *api.Hub, zonesPath, patrolPath, csvPath string, speed float64) {
+	e := buildEngine(zonesPath, patrolPath)
+	if e == nil {
+		return
+	}
+	// Replay compresses event time by `speed`, but the sweeper measures silence in
+	// wall time. Scale the silence multiplier by 1/speed so a dark event still
+	// means "silent for 10x the expected reporting interval in EVENT time" (what
+	// "stopped transmitting" means in the recording), independent of playback
+	// speed. Floor it so the wall-clock threshold stays above roughly one sweep
+	// tick for the fastest speed class.
+	effMult := check.RealFeedSilenceMultiplier / speed
+	if effMult < 0.2 {
+		effMult = 0.2
+	}
+	e.sweeper.SetSilenceMultiplier(effMult)
+	log.Info().Str("file", csvPath).Float64("speed", speed).Float64("dark_mult", effMult).Msg("engine running: aisdk CSV replay")
+
+	e.startTelemetry(ctx, hub)
+	src := make(chan ingest.Message, 1024)
+	go func() {
+		if err := gen.RunAISDK(ctx, gen.AISDKConfig{Path: csvPath, Speed: speed}, src, e.cold.SetName); err != nil && ctx.Err() == nil {
+			log.Error().Err(err).Str("file", csvPath).Msg("aisdk replay failed")
+		}
+		close(src)
+	}()
+	e.pipe.RunSource(src)
+	e.pipe.Wait()
+}
+
 // runSweeper runs the dark-event sweep on a 1s tick (detecting absence is
 // sweep-based by definition; never an inline millisecond claim).
 func runSweeper(ctx context.Context, sweeper *check.Sweeper) {
@@ -242,12 +352,18 @@ func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards) {
 
 // broadcast emits a metrics frame every second (rate = messages in the last
 // second) and forwards alerts as they arrive, capped per second so the feed
-// stays readable.
+// stays readable. It also dedups the on-screen feed per (vessel, kind): real AIS
+// carries duplicate MMSIs and GPS-glitch fixes that legitimately trip the spoof
+// check many times for one vessel, and a live ops feed would collapse those into
+// one row. The engine's alert counter still counts every detection; only the
+// visible feed is deduped.
 func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *state.Shards, alertCh <-chan alert.Alert) {
 	const alertsPerSecCap = 25
+	const feedCooldownMs = 20_000
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
+	lastShown := make(map[uint64]int64) // (mmsi<<2 | kindCode) -> wall ms last shown
 	var lastIngested uint64
 	sent := 0
 	for {
@@ -255,7 +371,13 @@ func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *
 		case <-ctx.Done():
 			return
 		case a := <-alertCh:
+			key := uint64(a.MMSI)<<2 | uint64(feedKindCode(a.Kind))
+			nowMs := time.Now().UnixMilli()
+			if last, ok := lastShown[key]; ok && nowMs-last < feedCooldownMs {
+				continue // shown recently; engine already counted it
+			}
 			if sent < alertsPerSecCap {
+				lastShown[key] = nowMs
 				hub.Broadcast(alert.Envelope{Type: "alert", Alert: a})
 				sent++
 			}
@@ -266,6 +388,20 @@ func broadcast(ctx context.Context, hub *api.Hub, counters *alert.Counters, st *
 			hub.Broadcast(counters.Snapshot(rate, st.Len()))
 			sent = 0
 		}
+	}
+}
+
+// feedKindCode maps an alert kind to a 2-bit code for the feed-dedup key.
+func feedKindCode(kind string) uint64 {
+	switch kind {
+	case alert.KindZone:
+		return 0
+	case alert.KindSpoof:
+		return 1
+	case alert.KindDark:
+		return 2
+	default:
+		return 3
 	}
 }
 

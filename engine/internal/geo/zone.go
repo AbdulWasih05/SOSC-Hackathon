@@ -16,6 +16,12 @@ const (
 	CountryUnknown uint16 = 0
 	CountryIN      uint16 = 1
 	CountryLK      uint16 = 2
+	CountryNL      uint16 = 3
+	CountryDK      uint16 = 4
+	// CountryForeign is a generic non-home flag used by the real feeds: any vessel
+	// whose MMSI MID is not a home-country MID gets this, so EEZ-cross-by-foreign
+	// checks fire without enumerating every flag state on earth.
+	CountryForeign uint16 = 255
 )
 
 // CountryCode maps a two-letter code to the compact numeric code.
@@ -25,8 +31,27 @@ func CountryCode(s string) uint16 {
 		return CountryIN
 	case "LK":
 		return CountryLK
+	case "NL":
+		return CountryNL
+	case "DK":
+		return CountryDK
 	default:
 		return CountryUnknown
+	}
+}
+
+// FlagFromMMSI derives a compact flag code from an MMSI's MID (first three
+// digits): Denmark (219, 220) and the Netherlands (244-246) map to their home
+// code, any other MID maps to CountryForeign. Used by the real feeds (live and
+// CSV replay), which have no per-vessel flag table.
+func FlagFromMMSI(mmsi uint32) uint16 {
+	switch mmsi / 1_000_000 {
+	case 219, 220:
+		return CountryDK
+	case 244, 245, 246:
+		return CountryNL
+	default:
+		return CountryForeign
 	}
 }
 

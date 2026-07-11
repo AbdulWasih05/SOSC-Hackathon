@@ -26,11 +26,27 @@ the stub currently prints the methodology header.)
 
 ```
 cd engine
-make run           # real engine on the firehose (Act 3): alerts, metrics, positions
+make run           # LIVE aisstream.io feed (Dutch / North Sea): real vessels, real alerts
+make firehose      # in-memory stress feed (Act 3): the 50k+ throughput theatre
 make scenario      # scripted story (Act 2): zone, spoof, dark + intercept in sequence
 make emit-fake     # schema-valid alerts + metrics + positions, no engine (frontend dev)
 make test          # tests (table-driven coverage in check/ and geo/)
+make bench         # 60s sustained throughput + latency benchmark
 ```
+
+The live feed reads a free [aisstream.io](https://aisstream.io) API key from
+`engine/.env` (never committed):
+
+```
+APIKey=your_key_here
+```
+
+It subscribes to the Dutch / southern North Sea bounding box, where community AIS
+coverage is densest, and maps real `PositionReport` / `ShipStaticData` messages
+through the same engine as the synthetic modes. Volume is a real regional rate
+(tens of msgs/sec); the 50,000+/sec throughput floor is proven by `make bench` /
+`make firehose`, not the live feed. Dark-event detection uses the 10x silence
+multiplier on the live feed (vs 6x synthetic) to absorb ordinary coverage gaps.
 
 Dashboard connects to the websocket at `ws://localhost:8080/ws`. The engine
 speaks three message types: `alert`, `metrics`, and `positions` (a GeoJSON

@@ -15,6 +15,26 @@ const EMPTY_STYLE = {
 const CENTER = [79.25, 9.0]
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
+// zonesBounds returns [[minLon,minLat],[maxLon,maxLat]] over every zone polygon
+// so the map centers on whichever region the engine serves (North Sea for the
+// live feed, Gulf of Mannar for the scenario), with no hardcoded region.
+function zonesBounds(fc) {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity
+  const visit = (coords) => {
+    if (typeof coords[0] === 'number') {
+      const [lon, lat] = coords
+      if (lon < minLon) minLon = lon
+      if (lat < minLat) minLat = lat
+      if (lon > maxLon) maxLon = lon
+      if (lat > maxLat) maxLat = lat
+      return
+    }
+    coords.forEach(visit)
+  }
+  for (const f of fc.features || []) if (f.geometry?.coordinates) visit(f.geometry.coordinates)
+  return Number.isFinite(minLon) ? [[minLon, minLat], [maxLon, maxLat]] : null
+}
+
 // How long alert emphasis (flagged vessel, cone, intercept) stays on the map.
 const CONE_TTL_MS = 15000
 const FLAG_TTL_MS = 9000
@@ -40,10 +60,24 @@ const MapView = forwardRef(function MapView(_, ref) {
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
 
     map.on('load', async () => {
+      // Offline land/terrain overview: a local low-resolution coastline drawn
+      // under everything else. No external tiles (stays offline, no venue wifi),
+      // just a static GeoJSON bundled with the dashboard so land reads as land.
+      try {
+        map.addSource('land', { type: 'geojson', data: `${import.meta.env.BASE_URL}land.geojson` })
+        map.addLayer({ id: 'land-fill', type: 'fill', source: 'land', paint: { 'fill-color': '#141d33', 'fill-opacity': 0.85 } })
+        map.addLayer({ id: 'land-line', type: 'line', source: 'land', paint: { 'line-color': '#31425f', 'line-width': 0.8 } })
+      } catch {
+        /* land is decorative; map still works without it */
+      }
+
       // Zones from the engine (single source of truth).
       try {
         const zones = await fetch(`${HTTP_BASE}/zones`).then((r) => r.json())
         map.addSource('zones', { type: 'geojson', data: zones })
+        // Center on the served region (North Sea live feed, or Gulf of Mannar).
+        const b = zonesBounds(zones)
+        if (b) map.fitBounds(b, { padding: 70, duration: 0, maxZoom: 10 })
         map.addLayer({
           id: 'zone-fill',
           type: 'fill',

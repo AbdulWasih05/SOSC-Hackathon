@@ -1,0 +1,19 @@
+{
+  "note": "Dutch Coastguard patrol assets for intercept geometry on the live North Sea feed. Positions configured near the protected areas, not fleet-integrated. Coordinates in decimal degrees.",
+  "patrols": [
+    {
+      "id": "P1",
+      "name": "NL CGV Barend Biesheuvel",
+      "lat": 51.95,
+      "lon": 3.90,
+      "max_speed_kn": 25
+    },
+    {
+      "id": "P2",
+      "name": "NL CGV Visarend",
+      "lat": 52.35,
+      "lon": 4.45,
+      "max_speed_kn": 22
+    }
+  ]
+}

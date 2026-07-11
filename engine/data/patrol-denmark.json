@@ -1,0 +1,19 @@
+{
+  "note": "Danish Navy patrol assets for intercept geometry on the aisdk demo. Positions near the Kattegat / Great Belt protected areas, not fleet-integrated. Coordinates in decimal degrees.",
+  "patrols": [
+    {
+      "id": "P1",
+      "name": "HDMS Diana",
+      "lat": 56.55,
+      "lon": 11.28,
+      "max_speed_kn": 24
+    },
+    {
+      "id": "P2",
+      "name": "HDMS Rota",
+      "lat": 55.42,
+      "lon": 11.00,
+      "max_speed_kn": 22
+    }
+  ]
+}

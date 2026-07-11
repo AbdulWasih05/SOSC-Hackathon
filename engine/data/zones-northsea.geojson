@@ -1,0 +1,67 @@
+{
+  "type": "FeatureCollection",
+  "note": "Live-feed zones for the Dutch/southern North Sea (aisstream.io coverage is densest here). Real restricted areas placed on observed Rotterdam-delta traffic so live vessels produce genuine outside-to-inside transitions. Coordinates are [lon, lat].",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "voordelta-n2000",
+        "name": "Voordelta Natura 2000 Protected Area",
+        "type": "mpa"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [3.62, 51.58],
+            [4.05, 51.58],
+            [4.05, 51.95],
+            [3.62, 51.95],
+            [3.62, 51.58]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hollandse-kust-zuid",
+        "name": "Hollandse Kust Zuid Wind Farm (closed to shipping)",
+        "type": "mpa"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [4.00, 52.18],
+            [4.32, 52.18],
+            [4.32, 52.42],
+            [4.00, 52.42],
+            [4.00, 52.18]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "netherlands-eez",
+        "name": "Netherlands EEZ (southern North Sea segment)",
+        "type": "eez",
+        "country": "NL"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [2.00, 51.00],
+            [3.55, 51.00],
+            [3.55, 52.60],
+            [2.00, 52.60],
+            [2.00, 51.00]
+          ]
+        ]
+      }
+    }
+  ]
+}
