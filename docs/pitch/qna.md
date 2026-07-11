@@ -9,6 +9,26 @@ No em dashes. Say the honest number.
 
 ---
 
+## Key numbers (say these)
+
+Machine: Windows 11 dev laptop, 8 CPUs, Go 1.26.5. The locked 60s methodology
+run happens on the team's weakest Linux laptop before the final slide.
+
+| Metric | Number | Notes |
+|--------|--------|-------|
+| Throughput floor | 50,000 msgs/sec | The problem-statement requirement |
+| Real-data throughput | 8,681,066 msgs/sec | `make bench`, real Danish AIS (aisdk), 2,396 distinct vessels, ~174x the floor |
+| Synthetic throughput | 8,126,083 msgs/sec | `make bench-firehose`, 98,064 distinct vessels (fuller state table) |
+| Dropped messages | 0 | At both benchmark rates |
+| Inline alert latency | p50 768 us, p99 3072 us | Zone + spoof, per message (single-digit ms) |
+| Dark-event detection | 1s sweep + silence threshold | Absence, never a millisecond claim; ~60s for a slow vessel |
+| Sweep scan cost | p50 3072 us, p99 6144 us | Cost of one full-table dark scan over ~98k vessels, far inside the 1s tick |
+
+One-line version: "50k floor, met at 8.7 million per second on real Danish AIS,
+zero dropped, single-digit millisecond inline latency, on a laptop."
+
+---
+
 ## The benchmark
 
 **Q: How did you test the 50,000/sec throughput claim?**
