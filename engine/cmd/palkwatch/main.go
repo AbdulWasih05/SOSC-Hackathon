@@ -128,9 +128,11 @@ func buildEngine(zonesPath, patrolPath string) *engine {
 	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh}
 }
 
-// startTelemetry launches the metrics/alert broadcaster and the dark sweep.
+// startTelemetry launches the metrics/alert broadcaster, the vessel position
+// feed, and the dark sweep.
 func (e *engine) startTelemetry(ctx context.Context, hub *api.Hub) {
 	go broadcast(ctx, hub, e.counters, e.st, e.alertCh)
+	go broadcastPositions(ctx, hub, e.st)
 	go runSweeper(ctx, e.sweeper)
 }
 
@@ -186,6 +188,40 @@ func runSweeper(ctx context.Context, sweeper *check.Sweeper) {
 			return
 		case <-t.C:
 			sweeper.Tick(ingest.NowNs())
+		}
+	}
+}
+
+// broadcastPositions emits a GeoJSON FeatureCollection of vessel positions
+// twice a second (the frozen contract cap, regardless of ingest rate). Under
+// the firehose the table has ~100k vessels, far more than a map can draw, so it
+// sends a stable MMSI-strided sample plus every alert-runner vessel; in scenario
+// mode the handful of vessels are all sent. Names are omitted (rule 1).
+func broadcastPositions(ctx context.Context, hub *api.Hub, st *state.Shards) {
+	const maxVessels = 3000
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			total := st.Len()
+			stride := uint32(1)
+			if total > maxVessels {
+				stride = uint32((total + maxVessels - 1) / maxVessels)
+			}
+			feats := make([]alert.Feature, 0, maxVessels+64)
+			st.ForEach(func(mmsi uint32, v state.VesselState) {
+				if stride > 1 && mmsi%stride != 0 && mmsi < 420000000 {
+					return
+				}
+				feats = append(feats, alert.NewFeature(mmsi, v.LastLat, v.LastLon, v.SpeedKn, v.HeadingDeg))
+			})
+			hub.Broadcast(alert.PositionMsg{
+				Type: "positions",
+				FC:   alert.FeatureCollection{Type: "FeatureCollection", Features: feats},
+			})
 		}
 	}
 }

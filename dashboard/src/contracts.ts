@@ -62,4 +62,28 @@ export interface MetricsMessage {
   alerts_total: number;
 }
 
-export type ServerMessage = AlertMessage | MetricsMessage;
+// Vessel positions: a GeoJSON FeatureCollection for one MapLibre GeoJSONSource,
+// sent at most twice a second. Names are not included; join them from alerts.
+export interface VesselProps {
+  mmsi: number;
+  speed_kn: number;
+  heading_deg: number;
+}
+
+export interface VesselFeature {
+  type: "Feature";
+  geometry: { type: "Point"; coordinates: [number, number] }; // [lon, lat]
+  properties: VesselProps;
+}
+
+export interface FeatureCollection {
+  type: "FeatureCollection";
+  features: VesselFeature[];
+}
+
+export interface PositionMessage {
+  type: "positions";
+  fc: FeatureCollection;
+}
+
+export type ServerMessage = AlertMessage | MetricsMessage | PositionMessage;
