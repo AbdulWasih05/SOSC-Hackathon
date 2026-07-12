@@ -33,10 +33,10 @@ export default function App() {
     return <LandingPage onEnter={() => setView('dashboard')} />
   }
 
-  return <Dashboard />
+  return <Dashboard onHome={() => setView('landing')} />
 }
 
-function Dashboard() {
+function Dashboard({ onHome }) {
   const [metrics, setMetrics] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [status, setStatus] = useState('connecting')
@@ -116,7 +116,9 @@ function Dashboard() {
     <div className="app">
       {/* ── Top Header Bar ── */}
       <header className="topbar">
-        <div className="brand">
+        <div className="brand" role="button" tabIndex={0} title="Back to home" style={{ cursor: 'pointer' }}
+          onClick={onHome}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onHome() }}>
           <img src="/logo.svg" alt="Reef Watchers" className="brand-icon" style={{ width: '32px', height: '32px', marginRight: '12px', objectFit: 'contain', borderRadius: '50%' }} />
           Reef Watchers
         </div>
@@ -127,6 +129,7 @@ function Dashboard() {
           <span className="topbar-tag">AIS Surveillance</span>
         </div>
         <div className="topbar-right">
+          <button className="topbar-home" onClick={onHome} title="Back to home">← Home</button>
           <WeatherBadge weather={weather} />
           <span className="topbar-update">
             Last update <strong>:</strong>

@@ -48,7 +48,7 @@ type AISDKConfig struct {
 func RunAISDK(ctx context.Context, cfg AISDKConfig, out chan<- ingest.Message, setName func(uint32, string)) error {
 	speed := cfg.Speed
 	if speed <= 0 {
-		speed = 30
+		speed = 30 // feeding speed
 	}
 	f, err := os.Open(cfg.Path)
 	if err != nil {

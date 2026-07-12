@@ -51,8 +51,8 @@ export default function LandingPage({ onEnter }) {
         <div className="l-hero-cards">
           <div className="l-float-card">
             <div className="l-float-label">Throughput</div>
-            <div className="l-float-value accent">50,000+</div>
-            <div className="l-float-unit">msgs/sec</div>
+            <div className="l-float-value accent">8.7M</div>
+            <div className="l-float-unit">msgs/sec, measured</div>
           </div>
           <div className="l-float-card">
             <div className="l-float-label">Alert Latency</div>
@@ -70,16 +70,16 @@ export default function LandingPage({ onEnter }) {
       {/* ── Stats Ticker ── */}
       <section className="l-stats">
         <div className="l-stat">
-          <div className="l-stat-value accent">50,000+</div>
-          <div className="l-stat-label">Messages / Second</div>
+          <div className="l-stat-value accent">8.7M</div>
+          <div className="l-stat-label">Msgs / Sec on Real AIS</div>
         </div>
         <div className="l-stat">
-          <div className="l-stat-value warn">5ms</div>
-          <div className="l-stat-label">Inline Alert Latency</div>
+          <div className="l-stat-value warn">&lt;5ms</div>
+          <div className="l-stat-label">Inline Alert Latency (p99)</div>
         </div>
         <div className="l-stat">
-          <div className="l-stat-value">3</div>
-          <div className="l-stat-label">Alert Types</div>
+          <div className="l-stat-value">0</div>
+          <div className="l-stat-label">Messages Dropped</div>
         </div>
         <div className="l-stat">
           <div className="l-stat-value success">1</div>
@@ -113,9 +113,9 @@ export default function LandingPage({ onEnter }) {
               INLINE
             </div>
             <p className="l-feature-desc">
-              Detects outside-to-inside transitions across restricted Marine
-              Protected Areas and EEZ boundaries. Pre-rasterized spatial grid
-              skips 99% of polygon tests.
+              Fires on an outside-to-inside entry of a Marine Protected Area, or
+              an EEZ crossing by a foreign-flagged vessel. A pre-rasterized grid
+              skips the polygon test for the common far-from-zone message.
             </p>
             <div className="l-feature-metric">
               <span className="l-feature-metric-val">&lt;1ms</span>
@@ -135,9 +135,9 @@ export default function LandingPage({ onEnter }) {
               INLINE
             </div>
             <p className="l-feature-desc">
-              Flags impossible speed between consecutive fixes (&gt;60 kn) or
-              duplicate MMSI appearing &gt;50 nm apart within 60 seconds.
-              Flat-plane math, zero GIS overhead.
+              Flags an impossible implied speed between fixes (&gt;60 kn), or one
+              MMSI reported &gt;50 nm apart within 60 seconds. Flat-plane math,
+              no GIS library.
             </p>
             <div className="l-feature-metric">
               <span className="l-feature-metric-val">60kn</span>
@@ -156,13 +156,13 @@ export default function LandingPage({ onEnter }) {
             </div>
             <h3 className="l-feature-name">Dark Event</h3>
             <div className="l-feature-badge" style={{ color: '#e66767', borderColor: '#e66767' }}>
-              CRITICAL
+              SWEEP
             </div>
             <p className="l-feature-desc">
-              Detects vessels that stop transmitting: silence &gt;6x expected
-              interval, last speed &gt;1 kn, within 5 nm of a monitored zone.
-              Dead-reckoning cone + patrol intercept geometry computed
-              automatically.
+              Catches vessels that stop transmitting: silence past 6x the expected
+              interval, last speed &gt;1 kn, near a monitored zone. Emits a
+              dead-reckoning cone and a patrol intercept solution. Detecting
+              absence is a 1s sweep, never an inline millisecond claim.
             </p>
             <div className="l-feature-metric">
               <span className="l-feature-metric-val">1s</span>
@@ -234,8 +234,8 @@ export default function LandingPage({ onEnter }) {
 
         <div className="l-specs-grid">
           <div className="l-spec-item">
-            <div className="l-spec-key">Language</div>
-            <div className="l-spec-val">Go (single binary)</div>
+            <div className="l-spec-key">Engine</div>
+            <div className="l-spec-val">Go, single static binary</div>
           </div>
           <div className="l-spec-item">
             <div className="l-spec-key">Frontend</div>
@@ -243,31 +243,11 @@ export default function LandingPage({ onEnter }) {
           </div>
           <div className="l-spec-item">
             <div className="l-spec-key">State Model</div>
-            <div className="l-spec-val">64-shard in-memory, value structs</div>
-          </div>
-          <div className="l-spec-item">
-            <div className="l-spec-key">Batch Size</div>
-            <div className="l-spec-val">512 msgs, 5ms timeout flush</div>
+            <div className="l-spec-val">64-shard in-memory, value structs, zero hot-path pointers</div>
           </div>
           <div className="l-spec-item">
             <div className="l-spec-key">Spatial Index</div>
-            <div className="l-spec-val">0.05 degree grid, pre-rasterized zones</div>
-          </div>
-          <div className="l-spec-item">
-            <div className="l-spec-key">Distance Math</div>
-            <div className="l-spec-val">Flat-plane equirectangular projection</div>
-          </div>
-          <div className="l-spec-item">
-            <div className="l-spec-key">MMSI Type</div>
-            <div className="l-spec-val">uint32 everywhere (halved key width)</div>
-          </div>
-          <div className="l-spec-item">
-            <div className="l-spec-key">GC Strategy</div>
-            <div className="l-spec-val">Zero pointers in hot path, sync.Pool</div>
-          </div>
-          <div className="l-spec-item">
-            <div className="l-spec-key">Logging</div>
-            <div className="l-spec-val">Zero per-message, atomic counters only</div>
+            <div className="l-spec-val">0.05 degree pre-rasterized zone grid</div>
           </div>
           <div className="l-spec-item">
             <div className="l-spec-key">Dependencies</div>
@@ -276,10 +256,6 @@ export default function LandingPage({ onEnter }) {
           <div className="l-spec-item">
             <div className="l-spec-key">Database</div>
             <div className="l-spec-val">None. Memory is the database.</div>
-          </div>
-          <div className="l-spec-item">
-            <div className="l-spec-key">Benchmark</div>
-            <div className="l-spec-val">60s sustained, make bench</div>
           </div>
         </div>
       </section>
@@ -302,7 +278,7 @@ export default function LandingPage({ onEnter }) {
           <span>Reef Watchers</span>
         </div>
         <div className="l-footer-copy">
-          Built for SOSC Hackathon 2025. Maritime dark-vessel detection engine.
+          Built for the SOSC Hackathon. Real-time maritime dark-vessel detection engine.
         </div>
       </footer>
     </div>

@@ -140,6 +140,30 @@ body {
   white-space: nowrap;
 }
 
+.topbar-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: transparent;
+  border: 2px solid var(--border);
+  border-radius: 0px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.topbar-home:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
 .topbar-route {
   font-size: 12px;
   font-weight: 700;
