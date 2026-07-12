@@ -1,14 +1,25 @@
 {
   "name": "anholt-trawling-demo",
-  "description": "TRAWLING angle, Danish region (matches the live aisstream.io API key's real coverage area, zones-denmark.geojson + patrol-denmark.json). HAVFRUEN runs from open Kattegat water into the Anholt Offshore Wind Farm closed area (ZONE_VIOLATION on entry, +90) then works a lawnmower pattern (2.7-4.1 kn, alternating ~45/225 deg headings) that satisfies check.FishingPattern's trawl signature: n=16 >= 12, minSpeed 2.7 >= 1.0, maxSpeed 4.1 <= 5.5, avgSpeed 3.39 in [2.0,4.5], course stddev > 25 deg from the near-reversing heading swings. Fires TRAWLING once the 16-fix ring buffer is pure post-entry (message 19). VESTKYSTEN trawls the identical speed/heading pattern in open Kattegat water outside the closed area the whole time and never alerts, demonstrating the illegal-zone gate (check/processor.go illegalHere) rather than a bare 'slow vessel' trigger. Run with: -scenario=data/scenario-trawling.json -zones=data/zones-denmark.geojson -patrol=data/patrol-denmark.json",
+  "description": "TRAWLING angle, Danish region (matches the live aisstream.io API key's real coverage area, zones-denmark.geojson + patrol-denmark.json). HAVFRUEN runs from open Kattegat water into the Anholt Offshore Wind Farm closed area (ZONE_VIOLATION on entry, +90) then works a lawnmower pattern (2.7-4.1 kn, alternating ~45/225 deg headings) that satisfies check.FishingPattern's trawl signature: n=16 >= 12, minSpeed 2.7 >= 1.0, maxSpeed 4.1 <= 5.5, avgSpeed 3.39 in [2.0,4.5], course stddev > 25 deg from the near-reversing heading swings. Fires TRAWLING once the 16-fix ring buffer is pure post-entry (message 19). VESTKYSTEN trawls the identical speed/heading pattern in open Kattegat water outside the closed area the whole time and never alerts, demonstrating the illegal-zone gate (check/processor.go illegalHere) rather than a bare 'slow vessel' trigger. NORDSTJERNEN transits straight through the Kattegat between the two zones at 14 kn and MAAGEN idles near Grenaa harbor at under 1 kn; both are ambient traffic for a populated map and never alert. Run with: -scenario=data/scenario-trawling.json -zones=data/zones-denmark.geojson -patrol=data/patrol-denmark.json",
   "speed": 180.0,
   "vessels": [
     { "mmsi": 219003001, "name": "HAVFRUEN", "flag": "DK" },
-    { "mmsi": 219003002, "name": "VESTKYSTEN", "flag": "DK" }
+    { "mmsi": 219003002, "name": "VESTKYSTEN", "flag": "DK" },
+    { "mmsi": 219003003, "name": "NORDSTJERNEN", "flag": "DK" },
+    { "mmsi": 219003004, "name": "MAAGEN", "flag": "DK" }
   ],
   "frames": [
     { "t_ms": 0,       "mmsi": 219003001, "lat": 56.6000, "lon": 11.5000, "speed_kn": 8.0, "heading_deg": 270 },
     { "t_ms": 0,       "mmsi": 219003002, "lat": 57.2000, "lon": 12.1000, "speed_kn": 3.0, "heading_deg": 45 },
+
+    { "t_ms": 0,       "mmsi": 219003003, "lat": 56.1000, "lon": 11.7000, "speed_kn": 14.0, "heading_deg": 270 },
+    { "t_ms": 1040000, "mmsi": 219003003, "lat": 56.1000, "lon": 11.3167, "speed_kn": 14.0, "heading_deg": 270 },
+    { "t_ms": 2080000, "mmsi": 219003003, "lat": 56.1000, "lon": 10.9333, "speed_kn": 14.0, "heading_deg": 270 },
+    { "t_ms": 3120000, "mmsi": 219003003, "lat": 56.1000, "lon": 10.5500, "speed_kn": 14.0, "heading_deg": 270 },
+
+    { "t_ms": 0,       "mmsi": 219003004, "lat": 56.4200, "lon": 10.8800, "speed_kn": 0.5, "heading_deg": 0 },
+    { "t_ms": 1500000, "mmsi": 219003004, "lat": 56.4205, "lon": 10.8805, "speed_kn": 0.4, "heading_deg": 10 },
+    { "t_ms": 3120000, "mmsi": 219003004, "lat": 56.4198, "lon": 10.8795, "speed_kn": 0.3, "heading_deg": 350 },
 
     { "t_ms": 90000,   "mmsi": 219003002, "lat": 57.2035, "lon": 12.1035, "speed_kn": 3.6, "heading_deg": 225 },
 

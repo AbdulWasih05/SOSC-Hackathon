@@ -1,4 +1,4 @@
-# Palk Watch engine. Run targets from the engine/ directory.
+# Reef Watchers engine. Run targets from the engine/ directory.
 .PHONY: run demo demo-fast live firehose scenario scenario-risk scenario-dk scenario-dk-weather demo-risk emit-fake bench bench-firehose test
 
 # DEMO: replay the recorded Danish AIS (aisdk) file. Real data, reproducible,

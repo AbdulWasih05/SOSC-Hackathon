@@ -1,4 +1,4 @@
-// Command palkwatch is the single Palk Watch binary. The producer is swappable;
+// Command palkwatch is the single Reef Watchers binary. The producer is swappable;
 // the engine is the same everywhere. Modes: -csv replays a recorded Danish AIS
 // (aisdk) file (the offline demo: real data, reproducible, no network); the
 // default runs the live aisstream.io feed (North Sea); -firehose runs the

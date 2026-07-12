@@ -1,4 +1,4 @@
-# Judge Q&A: Palk Watch
+# Judge Q&A: Reef Watchers
 
 Answers for the judging checkpoints. Judges are recent alumni engineers: they
 reward working demos, honest benchmarks, and clean repos; they punish enterprise

@@ -1,4 +1,4 @@
-# Palk Watch, Pitch Deck (slide-by-slide)
+# Reef Watchers, Pitch Deck (slide-by-slide)
 
 Maritime surveillance that alerts on absence, not just presence. One Go binary,
 real time, offline, on a laptop a coast guard station already owns.
@@ -17,7 +17,7 @@ Innovation, Feasibility, Impact, Execution, Presentation.
 
 ## Slide 1, Title
 
-**Palk Watch**
+**Reef Watchers**
 Real-time IUU fishing and dark-vessel surveillance for the tactical edge.
 
 One line: "Everyone alerts when a ship enters a zone. The crime happens when a

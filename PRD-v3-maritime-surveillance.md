@@ -1,4 +1,4 @@
-# PRD v2: Palk Watch (working name)
+# PRD v2: Reef Watchers (working name)
 ## Real-Time Maritime Dark Vessel Detection Engine
 ### 24-Hour Hackathon Build, Problem Statement 5
 ### v2: post judge/mentor review. Changes: rendezvous pre-cut, intercept geometry promoted into demo, live act pre-recorded, hot-path hardening, latency histogram HUD, H6 boring-version checkpoint.

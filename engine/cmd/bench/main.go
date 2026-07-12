@@ -58,7 +58,7 @@ func main() {
 		buf = workers * 2
 	}
 
-	fmt.Println("=== Palk Watch benchmark ===")
+	fmt.Println("=== Reef Watchers benchmark ===")
 	fmt.Printf("Go:       %s\n", runtime.Version())
 	fmt.Printf("OS:       %s/%s\n", runtime.GOOS, runtime.GOARCH)
 	fmt.Printf("CPUs:     %d\n", runtime.NumCPU())
