@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="180" viewBox="0 0 80 180">
+  <g stroke="#0a1128" stroke-width="3" fill="#0a1128">
+    <!-- Vessel hull -->
+    <path d="M 40 5 C 60 40, 70 120, 65 170 L 15 170 C 10 120, 20 40, 40 5 Z" fill="#e6e2d3" />
+    <!-- Helipad / Deck marking -->
+    <circle cx="40" cy="135" r="15" fill="none" />
+    <text x="40" y="140" font-family="monospace" font-weight="bold" font-size="14" text-anchor="middle" fill="#0a1128" stroke="none">H</text>
+    <!-- Bridge / Superstructure -->
+    <path d="M 20 70 L 60 70 L 65 95 L 15 95 Z" fill="#003cff" />
+    <rect x="30" y="45" width="20" height="25" fill="#f4f1e1" />
+    <!-- Bow details -->
+    <line x1="40" y1="15" x2="40" y2="45" />
+  </g>
+</svg>
