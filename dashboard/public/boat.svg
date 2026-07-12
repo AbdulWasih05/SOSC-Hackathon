@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="120" viewBox="0 0 60 120">
+  <g stroke="#0a1128" stroke-width="3" fill="#f4f1e1">
+    <!-- Boat hull -->
+    <path d="M 30 5 C 45 30, 50 80, 45 110 L 15 110 C 10 80, 15 30, 30 5 Z" />
+    <!-- Cabin -->
+    <rect x="20" y="40" width="20" height="30" fill="#003cff" stroke="#0a1128" />
+    <!-- Deck details -->
+    <line x1="20" y1="90" x2="40" y2="90" />
+    <line x1="30" y1="20" x2="30" y2="40" />
+  </g>
+</svg>

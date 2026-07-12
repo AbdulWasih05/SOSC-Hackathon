@@ -5,6 +5,7 @@ import AlertFeed from './panels/AlertFeed.jsx'
 import Latency from './panels/Latency.jsx'
 import FeatureCards from './panels/FeatureCards.jsx'
 import VesselDetails from './panels/VesselDetails.jsx'
+import LandingPage from './LandingPage.jsx'
 import { connect, HTTP_BASE } from './ws.js'
 import { KIND_COLOR, isAlertTab } from './theme.js'
 
@@ -26,6 +27,16 @@ function regionFromZones(fc) {
 }
 
 export default function App() {
+  const [view, setView] = useState('landing') // 'landing' | 'dashboard'
+
+  if (view === 'landing') {
+    return <LandingPage onEnter={() => setView('dashboard')} />
+  }
+
+  return <Dashboard />
+}
+
+function Dashboard() {
   const [metrics, setMetrics] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [status, setStatus] = useState('connecting')
@@ -106,7 +117,7 @@ export default function App() {
       {/* ── Top Header Bar ── */}
       <header className="topbar">
         <div className="brand">
-          <img src="/logo.png" alt="Reef Watchers" className="brand-icon" style={{ width: '28px', height: '28px', marginRight: '12px', objectFit: 'contain' }} />
+          <img src="/logo.svg" alt="Reef Watchers" className="brand-icon" style={{ width: '32px', height: '32px', marginRight: '12px', objectFit: 'contain', borderRadius: '50%' }} />
           Reef Watchers
         </div>
         <div className="topbar-sep" />
