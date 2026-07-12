@@ -25,6 +25,19 @@ const (
 	SeverityLow      = "LOW"
 )
 
+// Detail keys and values for weather-modulated fishing alerts. When the
+// optional weather layer is on, a fishing alert's detail carries the sea state
+// at the vessel and a confidence label saying whether the sea state explains
+// (LOW) or fails to explain (HIGH) the fishing-like behavior. Additive: absent
+// when the weather layer is off, so the pre-weather contract is unchanged.
+const (
+	DetailSeaStateM   = "sea_state_m"
+	DetailWeatherConf = "weather_confidence"
+
+	WeatherConfLow  = "LOW"  // rough seas can explain the track; suspicion held low
+	WeatherConfHigh = "HIGH" // calm seas; the behavior is not weather-induced
+)
+
 // Envelope is the top-level websocket frame for a single alert.
 type Envelope struct {
 	Type  string `json:"type"` // always "alert"

@@ -4,8 +4,28 @@ import { KIND_COLOR, KIND_LABEL, isAlertTab } from '../theme.js'
 function detailLine(a) {
   if (a.kind === 'SPOOF_TELEPORT') return `implied ${Math.round(a.detail?.implied_speed_kn ?? 0)} kn`
   if (a.kind === 'DARK_EVENT') return `silent ${Math.round(a.detail?.silence_s ?? 0)} s · ${a.zone_id}`
-  if (a.detail?.pattern) return a.detail.pattern
+  if (a.detail?.pattern) {
+    let s = a.detail.pattern
+    if (a.detail?.sea_state_m != null) s += ` · sea ${a.detail.sea_state_m} m`
+    return s
+  }
   return a.zone_id || ''
+}
+
+// Weather confidence chip: LOW means the sea state likely explains the
+// fishing-like track (held in Logs); HIGH means calm seas, so the behavior is
+// not weather-induced. Absent when the weather layer is off.
+function ConfChip({ conf }) {
+  if (conf !== 'LOW' && conf !== 'HIGH') return null
+  const low = conf === 'LOW'
+  return (
+    <span
+      className={`feed-conf feed-conf--${low ? 'low' : 'high'}`}
+      title={low ? 'Sea state likely explains this track (weather-discounted)' : 'Calm seas: behavior not explained by weather'}
+    >
+      {low ? 'LOW · WX' : 'HIGH CONF'}
+    </span>
+  )
 }
 
 function Intercepts({ list }) {
@@ -36,6 +56,7 @@ function Row({ a, onAlertClick }) {
             {KIND_LABEL[a.kind] || a.kind}
           </span>
           <span className="feed-name">{a.name || `MMSI ${a.mmsi}`}</span>
+          <ConfChip conf={a.detail?.weather_confidence} />
           {a.severity === 'CRITICAL' && <span className="feed-crit">CRITICAL</span>}
           {a.severity === 'MEDIUM' && <span className="feed-log-badge">LOG</span>}
         </div>

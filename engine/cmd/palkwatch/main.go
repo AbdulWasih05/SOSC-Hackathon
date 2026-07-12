@@ -221,8 +221,7 @@ func buildEngine(zonesPath, patrolPath string) *engine {
 		weatherCache = weather.NewCache()
 		lat, lon := geo.RegionAnchor(zs)
 		weatherPoll = weather.NewPoller(weatherCache, lat, lon)
-		// proc.SetWeather(weatherCache) is wired on the weather-fishing-confidence
-		// branch, where the fishing decision consumes the cache.
+		proc.SetWeather(weatherCache) // fishing decision reads sea state at emit time
 		log.Info().Float64("lat", lat).Float64("lon", lon).Msg("weather layer on: Open-Meteo marine sea-state poll (async, fail-open)")
 	}
 

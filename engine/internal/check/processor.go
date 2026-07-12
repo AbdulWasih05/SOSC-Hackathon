@@ -26,6 +26,16 @@ type RiskRecorder interface {
 	RecordFishing(mmsi uint32, nowMs int64) (score int, severity string)
 }
 
+// WeatherReader supplies the cached sea state at a position. It is set only when
+// the weather layer is on (SetWeather); nil means no weather context. Reads are
+// a cached lookup with no network, and happen only at fishing-alert emit time
+// (never per message), so the hot path is unchanged (CLAUDE.md rule G4). The
+// concrete implementation is weather.Cache, kept behind this interface so check
+// does not depend on the weather package.
+type WeatherReader interface {
+	SeaStateAt(lat, lon float64) (waveHeightM float64, ok bool)
+}
+
 // Processor ties the vessel table, spatial grid, and inline checks together. It
 // is shared by all workers: the grid is read-only after build and the state is
 // sharded, so concurrent Process calls are safe. Per-worker scratch lives on
@@ -37,12 +47,17 @@ type Processor struct {
 	counters *alert.Counters
 	ids      *alert.IDGen
 	sink     alert.Sink
-	risk     RiskRecorder // nil unless the risk engine is on
+	risk     RiskRecorder  // nil unless the risk engine is on
+	weather  WeatherReader // nil unless the weather layer is on
 }
 
 // SetRisk wires the risk factor recorder. Call before Start; the field is then
 // read-only while workers run, so no lock is needed.
 func (p *Processor) SetRisk(r RiskRecorder) { p.risk = r }
+
+// SetWeather wires the sea-state reader used to modulate fishing-alert
+// confidence. Call before Start; read-only while workers run, so no lock.
+func (p *Processor) SetWeather(w WeatherReader) { p.weather = w }
 
 // NewProcessor builds a processor. ids is shared with the dark sweeper so alert
 // IDs never collide. sink receives finished alerts (use alert.Discard for
@@ -202,6 +217,28 @@ func (p *Processor) emitFishing(m *ingest.Message, kind string, detail string) {
 			sev = rsev
 		}
 	}
+
+	det := map[string]any{"pattern": detail}
+	// Weather context (optional): does the sea state explain the fishing-like
+	// track? In heavy swell a vessel slows and weaves to keep its head to the
+	// sea, mimicking a trawl, so a weather-sensitive pattern in rough water is
+	// held at MEDIUM (Logs) as likely weather-induced; in calm water the behavior
+	// has no environmental excuse and any risk escalation stands. Purse-seining
+	// (a deliberate net loop) is geometric and weather cannot fake it, so it is
+	// never discounted. Reads the cache only here, at emit time; never per
+	// message. The alert is still emitted and counted either way (audit trail).
+	if p.weather != nil {
+		if waveM, ok := p.weather.SeaStateAt(m.Lat, m.Lon); ok {
+			det[alert.DetailSeaStateM] = math.Round(waveM*10) / 10
+			if conf := weatherConfidence(kind, waveM); conf != "" {
+				det[alert.DetailWeatherConf] = conf
+				if conf == alert.WeatherConfLow {
+					sev = alert.SeverityMedium
+				}
+			}
+		}
+	}
+
 	p.sink(alert.Alert{
 		ID:       p.ids.Next(),
 		Kind:     kind,
@@ -211,7 +248,7 @@ func (p *Processor) emitFishing(m *ingest.Message, kind string, detail string) {
 		TsMs:     m.TsMs,
 		Lat:      m.Lat,
 		Lon:      m.Lon,
-		Detail:   map[string]any{"pattern": detail},
+		Detail:   det,
 		Score:    score,
 	})
 }
