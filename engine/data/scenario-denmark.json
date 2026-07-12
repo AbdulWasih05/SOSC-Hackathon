@@ -1,0 +1,52 @@
+{
+  "name": "kattegat-all-angles-demo",
+  "description": "Round-2 all-angles demo, Danish waters (Kattegat / Great Belt), same region as the recorded aisdk replay so Act 1 and Act 2 share one map. Three vessels exercise every detection path the engine has. GRETHE HANSEN (Danish, MMSI 219000111) is the protected-zone offender and the CRITICAL money shot: it crosses into the Great Belt Natura 2000 MPA (ZONE_VIOLATION, inline), works a slow weaving trawl track inside it (TRAWLING, gated on illegal-here; weather layer tags it calm-water HIGH confidence when online), then dashes out and stops transmitting just north of the park (DARK_EVENT with a dead-reckoning cone and an intercept solution for HDMS Rota / HDMS Diana). Its risk score is 90 (zone) +20 (fishing) +15 (dark) capped to 100, so it labels CRITICAL and fires ILLEGAL_FISHING_SUSPECTED. NORTH STAR (foreign / NL, MMSI 244000222) is the deception-and-absence climber near the Anholt wind farm: it teleports once (SPOOF_TELEPORT, inline) then goes dark five times in a row near the closed wind farm without ever entering it, so its score has no 90-point zone term and climbs honestly LOW -> ELEVATED -> HIGH (spoof 15 + stacked dark 15/10/10/10/10), firing ILLEGAL_FISHING_SUSPECTED on the HIGH crossing with each dark carrying its own cone and intercepts. DFDS PEARL (Danish ferry, MMSI 219000333) is the control: an honest transit that stays clear of both MPAs and keeps transmitting, so it never alerts and never scores. That is the precision story on screen: clean traffic stays quiet. 'speed' compresses playback 60x; frame t_ms are event times so implied speeds are honest and only the intended teleport trips spoof. Dark reveal is wall-time (6x the reporting interval): the two fast runners vanish at 25 kn, ~12s of real silence, well inside the demo window, each heading toward its stationed patrol so at least one intercept solution is feasible.",
+  "speed": 60.0,
+  "vessels": [
+    { "mmsi": 219000111, "name": "GRETHE HANSEN", "flag": "DK" },
+    { "mmsi": 244000222, "name": "NORTH STAR", "flag": "NL" },
+    { "mmsi": 219000333, "name": "DFDS PEARL", "flag": "DK" }
+  ],
+  "frames": [
+    { "t_ms": 0,       "mmsi": 219000111, "lat": 55.290, "lon": 10.990, "speed_kn": 9,   "heading_deg": 0 },
+    { "t_ms": 240000,  "mmsi": 219000111, "lat": 55.345, "lon": 10.990, "speed_kn": 4.5, "heading_deg": 10 },
+    { "t_ms": 300000,  "mmsi": 219000111, "lat": 55.350, "lon": 10.990, "speed_kn": 3.0, "heading_deg": 20 },
+    { "t_ms": 360000,  "mmsi": 219000111, "lat": 55.354, "lon": 10.996, "speed_kn": 2.6, "heading_deg": 85 },
+    { "t_ms": 420000,  "mmsi": 219000111, "lat": 55.352, "lon": 11.002, "speed_kn": 3.4, "heading_deg": 340 },
+    { "t_ms": 480000,  "mmsi": 219000111, "lat": 55.358, "lon": 10.998, "speed_kn": 2.8, "heading_deg": 55 },
+    { "t_ms": 540000,  "mmsi": 219000111, "lat": 55.360, "lon": 10.992, "speed_kn": 3.6, "heading_deg": 300 },
+    { "t_ms": 600000,  "mmsi": 219000111, "lat": 55.364, "lon": 10.999, "speed_kn": 3.1, "heading_deg": 45 },
+    { "t_ms": 660000,  "mmsi": 219000111, "lat": 55.361, "lon": 11.005, "speed_kn": 2.7, "heading_deg": 110 },
+    { "t_ms": 720000,  "mmsi": 219000111, "lat": 55.367, "lon": 11.001, "speed_kn": 3.8, "heading_deg": 350 },
+    { "t_ms": 780000,  "mmsi": 219000111, "lat": 55.370, "lon": 10.995, "speed_kn": 3.0, "heading_deg": 25 },
+    { "t_ms": 840000,  "mmsi": 219000111, "lat": 55.373, "lon": 11.002, "speed_kn": 2.5, "heading_deg": 80 },
+    { "t_ms": 900000,  "mmsi": 219000111, "lat": 55.371, "lon": 11.008, "speed_kn": 3.5, "heading_deg": 315 },
+    { "t_ms": 960000,  "mmsi": 219000111, "lat": 55.377, "lon": 11.003, "speed_kn": 2.9, "heading_deg": 60 },
+    { "t_ms": 1020000, "mmsi": 219000111, "lat": 55.380, "lon": 10.997, "speed_kn": 3.3, "heading_deg": 15 },
+    { "t_ms": 1080000, "mmsi": 219000111, "lat": 55.383, "lon": 11.004, "speed_kn": 2.6, "heading_deg": 95 },
+    { "t_ms": 1140000, "mmsi": 219000111, "lat": 55.381, "lon": 10.998, "speed_kn": 3.7, "heading_deg": 330 },
+    { "t_ms": 1200000, "mmsi": 219000111, "lat": 55.386, "lon": 10.993, "speed_kn": 3.0, "heading_deg": 70 },
+    { "t_ms": 1260000, "mmsi": 219000111, "lat": 55.389, "lon": 11.000, "speed_kn": 2.8, "heading_deg": 20 },
+    { "t_ms": 1320000, "mmsi": 219000111, "lat": 55.387, "lon": 11.006, "speed_kn": 3.2, "heading_deg": 100 },
+    { "t_ms": 1920000, "mmsi": 219000111, "lat": 55.530, "lon": 11.000, "speed_kn": 25,  "heading_deg": 185 },
+
+    { "t_ms": 30000,   "mmsi": 244000222, "lat": 56.380, "lon": 11.280, "speed_kn": 20,  "heading_deg": 5 },
+    { "t_ms": 33000,   "mmsi": 244000222, "lat": 56.460, "lon": 11.140, "speed_kn": 25,  "heading_deg": 5 },
+    { "t_ms": 813000,  "mmsi": 244000222, "lat": 56.400, "lon": 11.300, "speed_kn": 25,  "heading_deg": 5 },
+    { "t_ms": 1593000, "mmsi": 244000222, "lat": 56.390, "lon": 11.260, "speed_kn": 25,  "heading_deg": 10 },
+    { "t_ms": 2373000, "mmsi": 244000222, "lat": 56.410, "lon": 11.320, "speed_kn": 25,  "heading_deg": 355 },
+    { "t_ms": 3153000, "mmsi": 244000222, "lat": 56.380, "lon": 11.290, "speed_kn": 25,  "heading_deg": 5 },
+    { "t_ms": 3933000, "mmsi": 244000222, "lat": 56.400, "lon": 11.270, "speed_kn": 25,  "heading_deg": 10 },
+
+    { "t_ms": 0,       "mmsi": 219000333, "lat": 55.200, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 400000,  "mmsi": 219000333, "lat": 55.260, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 800000,  "mmsi": 219000333, "lat": 55.320, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 1200000, "mmsi": 219000333, "lat": 55.380, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 1600000, "mmsi": 219000333, "lat": 55.440, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 2000000, "mmsi": 219000333, "lat": 55.500, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 2400000, "mmsi": 219000333, "lat": 55.560, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 2800000, "mmsi": 219000333, "lat": 55.620, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 3200000, "mmsi": 219000333, "lat": 55.680, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 },
+    { "t_ms": 3600000, "mmsi": 219000333, "lat": 55.740, "lon": 12.200, "speed_kn": 20,  "heading_deg": 0 }
+  ]
+}

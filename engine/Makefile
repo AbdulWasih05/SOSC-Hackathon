@@ -1,5 +1,5 @@
 # Palk Watch engine. Run targets from the engine/ directory.
-.PHONY: run demo demo-fast live firehose scenario scenario-risk demo-risk emit-fake bench bench-firehose test
+.PHONY: run demo demo-fast live firehose scenario scenario-risk scenario-dk scenario-dk-weather demo-risk emit-fake bench bench-firehose test
 
 # DEMO: replay the recorded Danish AIS (aisdk) file. Real data, reproducible,
 # fully offline (no network, no venue wifi). This is the demo data source.
@@ -30,6 +30,28 @@ scenario:
 # BOARDING_RECOMMENDED with intercepts. The risk-score money shot.
 scenario-risk:
 	go run ./cmd/palkwatch -scenario data/scenario.json -risk
+
+# ROUND-2 ALL-ANGLES SCENARIO (Danish waters, same map as the aisdk replay).
+# One scripted timeline that fires every detection path the engine has, in a
+# ~75s watchable window, fully offline: GRETHE HANSEN enters the Great Belt MPA
+# (ZONE, CRITICAL), works a trawl track inside it (TRAWLING), then dashes out and
+# goes dark (DARK + cone + a feasible HDMS Rota intercept); NORTH STAR teleports
+# (SPOOF) then goes dark five times near the Anholt wind farm, its risk score
+# climbing LOW -> ELEVATED -> HIGH (ILLEGAL_FISHING_SUSPECTED) with HDMS Diana
+# intercepts; DFDS PEARL transits cleanly and never alerts (the precision story).
+# Risk engine on so the tier climb and score breakdown are visible. Passes the
+# Danish zones + patrol config explicitly (scenario mode otherwise defaults to
+# the Gulf of Mannar zone file).
+scenario-dk:
+	go run ./cmd/palkwatch -scenario data/scenario-denmark.json -zones data/zones-denmark.geojson -patrol data/patrol-denmark.json -risk
+
+# Same all-angles scenario with the optional Open-Meteo sea-state layer on: the
+# TRAWLING alert then carries the live wave height and a weather-confidence label
+# (calm water -> HIGH confidence, rough -> held LOW). Needs internet for the
+# marine API; fails open (badge shows offline) if unreachable, everything else
+# unchanged.
+scenario-dk-weather:
+	go run ./cmd/palkwatch -scenario data/scenario-denmark.json -zones data/zones-denmark.geojson -patrol data/patrol-denmark.json -risk -weather
 
 # Recorded Danish AIS replay with the risk engine on: real vessels get scored and
 # colored by tier as they trip zone/spoof/dark checks.
