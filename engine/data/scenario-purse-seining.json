@@ -1,0 +1,36 @@
+{
+  "name": "gulf-of-mannar-purse-seining-demo",
+  "description": "PURSE_SEINING angle. VALAI SUTHI enters the Gulf of Mannar MNP (ZONE_VIOLATION on entry, +90), then sets a net: a tight one-direction loop (heading sweeps 0 -> 337.5 deg in 22.5 deg steps, net rotation 337.5 deg) while decelerating from 8.0 kn to a 1.5 kn haul-stop. Satisfies check.FishingPattern's purse-seine signature: n=16 >= 10, |net signed heading delta| 337.5 >= 270, maxSpeed 8.0 > 7.0, firstSpeed 8.0 > 5.0, recentSpeed 1.5 <= 2.5. Fires PURSE_SEINING once the 16-fix ring buffer is pure post-entry (message 19); purse-seining is checked first in FishingPattern and is not weather-discounted (geometric signature). THEN KADAL loops and stops identically in open water outside the MPA and never alerts, showing the illegal-zone gate holds even for the strongest pattern match.",
+  "speed": 600.0,
+  "vessels": [
+    { "mmsi": 419005001, "name": "VALAI SUTHI", "flag": "IN" },
+    { "mmsi": 419005002, "name": "THEN KADAL", "flag": "IN" }
+  ],
+  "frames": [
+    { "t_ms": 0,        "mmsi": 419005001, "lat": 9.2000, "lon": 79.5500, "speed_kn": 8.0, "heading_deg": 270 },
+    { "t_ms": 0,        "mmsi": 419005002, "lat": 8.3000, "lon": 78.6000, "speed_kn": 8.0, "heading_deg": 0 },
+
+    { "t_ms": 60000,    "mmsi": 419005002, "lat": 8.3010, "lon": 78.6010, "speed_kn": 6.0, "heading_deg": 90 },
+    { "t_ms": 120000,   "mmsi": 419005002, "lat": 8.3000, "lon": 78.6020, "speed_kn": 3.0, "heading_deg": 180 },
+    { "t_ms": 180000,   "mmsi": 419005002, "lat": 8.2990, "lon": 78.6010, "speed_kn": 1.5, "heading_deg": 270 },
+
+    { "t_ms": 9240000,  "mmsi": 419005001, "lat": 9.2000, "lon": 79.2040, "speed_kn": 8.0, "heading_deg": 270 },
+    { "t_ms": 9300000,  "mmsi": 419005001, "lat": 9.2000, "lon": 79.2020, "speed_kn": 8.0, "heading_deg": 0 },
+    { "t_ms": 9360000,  "mmsi": 419005001, "lat": 9.2008, "lon": 79.2018, "speed_kn": 7.8, "heading_deg": 22.5 },
+    { "t_ms": 9420000,  "mmsi": 419005001, "lat": 9.2014, "lon": 79.2014, "speed_kn": 7.5, "heading_deg": 45 },
+    { "t_ms": 9480000,  "mmsi": 419005001, "lat": 9.2018, "lon": 79.2008, "speed_kn": 7.2, "heading_deg": 67.5 },
+    { "t_ms": 9540000,  "mmsi": 419005001, "lat": 9.2020, "lon": 79.2000, "speed_kn": 6.8, "heading_deg": 90 },
+    { "t_ms": 9600000,  "mmsi": 419005001, "lat": 9.2018, "lon": 79.1992, "speed_kn": 6.5, "heading_deg": 112.5 },
+    { "t_ms": 9660000,  "mmsi": 419005001, "lat": 9.2014, "lon": 79.1986, "speed_kn": 6.0, "heading_deg": 135 },
+    { "t_ms": 9720000,  "mmsi": 419005001, "lat": 9.2008, "lon": 79.1982, "speed_kn": 5.5, "heading_deg": 157.5 },
+    { "t_ms": 9780000,  "mmsi": 419005001, "lat": 9.2000, "lon": 79.1980, "speed_kn": 5.0, "heading_deg": 180 },
+    { "t_ms": 9840000,  "mmsi": 419005001, "lat": 9.1992, "lon": 79.1982, "speed_kn": 4.5, "heading_deg": 202.5 },
+    { "t_ms": 9900000,  "mmsi": 419005001, "lat": 9.1986, "lon": 79.1986, "speed_kn": 4.0, "heading_deg": 225 },
+    { "t_ms": 9960000,  "mmsi": 419005001, "lat": 9.1982, "lon": 79.1992, "speed_kn": 3.5, "heading_deg": 247.5 },
+    { "t_ms": 10020000, "mmsi": 419005001, "lat": 9.1980, "lon": 79.2000, "speed_kn": 3.0, "heading_deg": 270 },
+    { "t_ms": 10080000, "mmsi": 419005001, "lat": 9.1982, "lon": 79.2008, "speed_kn": 2.5, "heading_deg": 292.5 },
+    { "t_ms": 10140000, "mmsi": 419005001, "lat": 9.1986, "lon": 79.2014, "speed_kn": 2.0, "heading_deg": 315 },
+    { "t_ms": 10200000, "mmsi": 419005001, "lat": 9.1992, "lon": 79.2018, "speed_kn": 1.5, "heading_deg": 337.5 },
+    { "t_ms": 10260000, "mmsi": 419005001, "lat": 9.1992, "lon": 79.2018, "speed_kn": 1.0, "heading_deg": 0 }
+  ]
+}

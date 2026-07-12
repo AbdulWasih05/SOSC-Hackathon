@@ -178,7 +178,7 @@ func LoadZones(path string) ([]*Zone, error) {
 		z := &Zone{
 			ID:          propString(f.Properties, "id"),
 			Name:        propString(f.Properties, "name"),
-			Kind:        propString(f.Properties, "type"),
+			Kind:        checkKind(propString(f.Properties, "type")),
 			CountryCode: CountryCode(propString(f.Properties, "country")),
 			Poly:        poly,
 			bound:       poly.Bound(),
@@ -189,6 +189,21 @@ func LoadZones(path string) ([]*Zone, error) {
 		return nil, fmt.Errorf("no polygon zones in %s", path)
 	}
 	return zones, nil
+}
+
+// checkKind maps a zone file's display "type" (the dashboard's styling
+// category) to the backend restriction kind ZoneViolation checks against. The
+// redesign split the single "mpa" category into finer display types
+// (ecological-zone, coral-reef, fishing-banned) for map coloring; all of them
+// are still restricted-outright areas, so they map back to KindMPA. "eez"
+// passes through unchanged.
+func checkKind(displayType string) string {
+	switch displayType {
+	case "ecological-zone", "coral-reef", "fishing-banned":
+		return KindMPA
+	default:
+		return displayType
+	}
 }
 
 func propString(p geojson.Properties, key string) string {

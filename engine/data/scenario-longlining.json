@@ -1,0 +1,42 @@
+{
+  "name": "gulf-of-mannar-longlining-demo",
+  "description": "LONGLINING angle. NEDU VALAI enters the Gulf of Mannar MNP (ZONE_VIOLATION on entry, +90) then runs a steam/set/haul sawtooth on a near-straight track: speeds 8,8,2,2,2,7,7,2,2,7,8,2,2,7,7,2 kn with heading held near 90 deg (+-4 deg jitter). Satisfies check.FishingPattern's longline signature: n=16 >= 12, speedCrossings = 7 >= 3, maxSpeed 8 >= 7.0, minSpeed 2 <= 2.5, course stddev well under 20 deg (steady track). Fires LONGLINING once the 16-fix ring buffer is pure post-entry (message 19). VADAKKU MEEN runs the identical sawtooth in open water south of the MPA and never alerts, showing the illegal-zone gate holds regardless of pattern strength.",
+  "speed": 120.0,
+  "vessels": [
+    { "mmsi": 419004001, "name": "NEDU VALAI", "flag": "IN" },
+    { "mmsi": 419004002, "name": "VADAKKU MEEN", "flag": "IN" }
+  ],
+  "frames": [
+    { "t_ms": 0,       "mmsi": 419004001, "lat": 9.10, "lon": 79.5500, "speed_kn": 8.0, "heading_deg": 270 },
+    { "t_ms": 0,       "mmsi": 419004002, "lat": 8.30, "lon": 78.5000, "speed_kn": 8.0, "heading_deg": 90 },
+
+    { "t_ms": 60000,   "mmsi": 419004002, "lat": 8.30, "lon": 78.5010, "speed_kn": 8.0, "heading_deg": 90 },
+    { "t_ms": 120000,  "mmsi": 419004002, "lat": 8.30, "lon": 78.5020, "speed_kn": 2.0, "heading_deg": 90 },
+    { "t_ms": 180000,  "mmsi": 419004002, "lat": 8.30, "lon": 78.5030, "speed_kn": 2.0, "heading_deg": 90 },
+    { "t_ms": 240000,  "mmsi": 419004002, "lat": 8.30, "lon": 78.5040, "speed_kn": 7.0, "heading_deg": 90 },
+
+    { "t_ms": 300000,  "mmsi": 419004002, "lat": 8.30, "lon": 78.5050, "speed_kn": 7.0, "heading_deg": 90 },
+
+    { "t_ms": 360000,  "mmsi": 419004002, "lat": 8.30, "lon": 78.5060, "speed_kn": 2.0, "heading_deg": 90 },
+
+    { "t_ms": 420000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4600, "speed_kn": 8.0, "heading_deg": 270 },
+
+    { "t_ms": 480000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4610, "speed_kn": 8.0, "heading_deg": 88 },
+    { "t_ms": 540000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4620, "speed_kn": 8.0, "heading_deg": 90 },
+    { "t_ms": 600000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4630, "speed_kn": 2.0, "heading_deg": 92 },
+    { "t_ms": 660000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4640, "speed_kn": 2.0, "heading_deg": 89 },
+    { "t_ms": 720000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4650, "speed_kn": 2.0, "heading_deg": 91 },
+    { "t_ms": 780000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4660, "speed_kn": 7.0, "heading_deg": 90 },
+    { "t_ms": 840000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4670, "speed_kn": 7.0, "heading_deg": 88 },
+    { "t_ms": 900000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4680, "speed_kn": 2.0, "heading_deg": 92 },
+    { "t_ms": 960000,  "mmsi": 419004001, "lat": 9.10, "lon": 79.4690, "speed_kn": 2.0, "heading_deg": 90 },
+    { "t_ms": 1020000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4700, "speed_kn": 7.0, "heading_deg": 91 },
+    { "t_ms": 1080000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4710, "speed_kn": 8.0, "heading_deg": 89 },
+    { "t_ms": 1140000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4720, "speed_kn": 2.0, "heading_deg": 90 },
+    { "t_ms": 1200000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4730, "speed_kn": 2.0, "heading_deg": 92 },
+    { "t_ms": 1260000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4740, "speed_kn": 7.0, "heading_deg": 88 },
+    { "t_ms": 1320000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4750, "speed_kn": 7.0, "heading_deg": 90 },
+    { "t_ms": 1380000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4760, "speed_kn": 2.0, "heading_deg": 91 },
+    { "t_ms": 1440000, "mmsi": 419004001, "lat": 9.10, "lon": 79.4770, "speed_kn": 2.0, "heading_deg": 90 }
+  ]
+}

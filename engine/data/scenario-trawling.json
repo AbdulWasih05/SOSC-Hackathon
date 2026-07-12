@@ -1,0 +1,44 @@
+{
+  "name": "gulf-of-mannar-trawling-demo",
+  "description": "TRAWLING angle. MEEN THEDI runs from open water into the Gulf of Mannar MNP (ZONE_VIOLATION on entry, +90) then works a lawnmower pattern (2.7-4.1 kn, alternating ~45/225 deg headings) that satisfies check.FishingPattern's trawl signature: n=16 >= 12, minSpeed 2.7 >= 1.0, maxSpeed 4.1 <= 5.5, avgSpeed 3.39 in [2.0,4.5], course stddev > 25 deg from the near-reversing heading swings. Fires TRAWLING once the 16-fix ring buffer is pure post-entry (message 19). KATTU KADAL trawls the identical speed/heading pattern in open water outside the MPA the whole time and never alerts, demonstrating the illegal-zone gate (check/processor.go illegalHere) rather than a bare 'slow vessel' trigger.",
+  "speed": 120.0,
+  "vessels": [
+    { "mmsi": 419003001, "name": "MEEN THEDI", "flag": "IN" },
+    { "mmsi": 419003002, "name": "KATTU KADAL", "flag": "IN" }
+  ],
+  "frames": [
+    { "t_ms": 0,       "mmsi": 419003001, "lat": 9.0500, "lon": 79.5200, "speed_kn": 8.0, "heading_deg": 270 },
+    { "t_ms": 0,       "mmsi": 419003002, "lat": 9.3000, "lon": 79.7000, "speed_kn": 3.0, "heading_deg": 45 },
+
+    { "t_ms": 90000,   "mmsi": 419003002, "lat": 9.3035, "lon": 79.7035, "speed_kn": 3.6, "heading_deg": 225 },
+
+    { "t_ms": 180000,  "mmsi": 419003002, "lat": 9.3000, "lon": 79.7000, "speed_kn": 2.8, "heading_deg": 50 },
+
+    { "t_ms": 270000,  "mmsi": 419003002, "lat": 9.3035, "lon": 79.7035, "speed_kn": 3.9, "heading_deg": 230 },
+
+    { "t_ms": 360000,  "mmsi": 419003002, "lat": 9.3000, "lon": 79.7000, "speed_kn": 3.2, "heading_deg": 40 },
+
+    { "t_ms": 420000,  "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 8.0, "heading_deg": 270 },
+
+    { "t_ms": 450000,  "mmsi": 419003002, "lat": 9.3035, "lon": 79.7035, "speed_kn": 3.7, "heading_deg": 220 },
+
+    { "t_ms": 480000,  "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 3.0, "heading_deg": 45 },
+    { "t_ms": 540000,  "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 3.6, "heading_deg": 225 },
+    { "t_ms": 540000,  "mmsi": 419003002, "lat": 9.3000, "lon": 79.7000, "speed_kn": 2.9, "heading_deg": 55 },
+    { "t_ms": 600000,  "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 2.8, "heading_deg": 50 },
+    { "t_ms": 660000,  "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 3.9, "heading_deg": 230 },
+    { "t_ms": 720000,  "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 3.2, "heading_deg": 40 },
+    { "t_ms": 780000,  "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 3.7, "heading_deg": 220 },
+    { "t_ms": 840000,  "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 2.9, "heading_deg": 55 },
+    { "t_ms": 900000,  "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 4.0, "heading_deg": 235 },
+    { "t_ms": 960000,  "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 3.1, "heading_deg": 35 },
+    { "t_ms": 1020000, "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 3.8, "heading_deg": 215 },
+    { "t_ms": 1080000, "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 3.0, "heading_deg": 48 },
+    { "t_ms": 1140000, "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 3.6, "heading_deg": 228 },
+    { "t_ms": 1200000, "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 2.7, "heading_deg": 42 },
+    { "t_ms": 1260000, "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 4.1, "heading_deg": 222 },
+    { "t_ms": 1320000, "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 3.3, "heading_deg": 38 },
+    { "t_ms": 1380000, "mmsi": 419003001, "lat": 9.0500, "lon": 79.4600, "speed_kn": 3.5, "heading_deg": 218 },
+    { "t_ms": 1440000, "mmsi": 419003001, "lat": 9.0535, "lon": 79.4635, "speed_kn": 3.0, "heading_deg": 45 }
+  ]
+}
