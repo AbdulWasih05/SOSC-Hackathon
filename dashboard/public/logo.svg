@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Ocean gradient for background circle -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2a3a"/>
+      <stop offset="100%" style="stop-color:#0d1b2a"/>
+    </linearGradient>
+    <!-- Subtle ring glow -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3987e5"/>
+      <stop offset="100%" style="stop-color:#2563a8"/>
+    </linearGradient>
+    <!-- Coral color -->
+    <linearGradient id="coralGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#c9915a"/>
+      <stop offset="100%" style="stop-color:#e8c496"/>
+    </linearGradient>
+    <!-- Wave color -->
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3987e5"/>
+      <stop offset="100%" style="stop-color:#5ba3f5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="248" fill="url(#bgGrad)"/>
+
+  <!-- Outer ring -->
+  <circle cx="256" cy="256" r="240" fill="none" stroke="url(#ringGrad)" stroke-width="5" opacity="0.7"/>
+
+  <!-- Inner subtle ring -->
+  <circle cx="256" cy="256" r="225" fill="none" stroke="#3987e5" stroke-width="1.5" opacity="0.25"/>
+
+  <!-- Water waves - stylized, hand-drawn feel -->
+  <g opacity="0.85">
+    <!-- Top wave -->
+    <path d="M100,210 Q130,190 160,210 Q190,230 220,210 Q250,190 280,210 Q310,230 340,210 Q370,190 410,210"
+          fill="none" stroke="url(#waveGrad)" stroke-width="6" stroke-linecap="round"/>
+    <!-- Second wave -->
+    <path d="M110,232 Q140,215 170,232 Q200,249 230,232 Q260,215 290,232 Q320,249 350,232 Q380,215 400,232"
+          fill="none" stroke="url(#waveGrad)" stroke-width="4.5" stroke-linecap="round" opacity="0.6"/>
+  </g>
+
+  <!-- Coral reef structure - organic branching -->
+  <g transform="translate(256,340)">
+    <!-- Main trunk -->
+    <path d="M0,20 L0,-40" stroke="url(#coralGrad)" stroke-width="12" stroke-linecap="round" fill="none"/>
+
+    <!-- Left main branch -->
+    <path d="M0,-20 L-45,-70" stroke="url(#coralGrad)" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <!-- Left sub-branches -->
+    <path d="M-25,-48 L-55,-42" stroke="url(#coralGrad)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M-38,-62 L-65,-90" stroke="url(#coralGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M-45,-70 L-35,-95" stroke="url(#coralGrad)" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M-55,-82 L-80,-78" stroke="url(#coralGrad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+
+    <!-- Right main branch -->
+    <path d="M0,-15 L50,-65" stroke="url(#coralGrad)" stroke-width="9" stroke-linecap="round" fill="none"/>
+    <!-- Right sub-branches -->
+    <path d="M28,-42 L58,-35" stroke="url(#coralGrad)" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M42,-58 L70,-85" stroke="url(#coralGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M50,-65 L40,-92" stroke="url(#coralGrad)" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <path d="M60,-78 L85,-72" stroke="url(#coralGrad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+
+    <!-- Small center branch -->
+    <path d="M0,-40 L-8,-75" stroke="url(#coralGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M0,-40 L12,-72" stroke="url(#coralGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M-5,-60 L-18,-68" stroke="url(#coralGrad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <path d="M8,-58 L20,-65" stroke="url(#coralGrad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+    <!-- Far left small coral -->
+    <path d="M-85,-15 L-95,-50" stroke="url(#coralGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M-90,-35 L-110,-42" stroke="url(#coralGrad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <path d="M-92,-42 L-82,-60" stroke="url(#coralGrad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+    <!-- Far right small coral -->
+    <path d="M90,-10 L100,-48" stroke="url(#coralGrad)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <path d="M95,-32 L115,-38" stroke="url(#coralGrad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+    <path d="M98,-40 L88,-58" stroke="url(#coralGrad)" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+    <!-- Tiny seabed dots for texture -->
+    <circle cx="-60" cy="15" r="4" fill="#c9915a" opacity="0.4"/>
+    <circle cx="70" cy="18" r="3.5" fill="#c9915a" opacity="0.35"/>
+    <circle cx="-30" cy="22" r="3" fill="#c9915a" opacity="0.3"/>
+    <circle cx="35" cy="20" r="2.5" fill="#c9915a" opacity="0.35"/>
+    <circle cx="110" cy="12" r="3" fill="#c9915a" opacity="0.25"/>
+    <circle cx="-105" cy="8" r="2.5" fill="#c9915a" opacity="0.25"/>
+  </g>
+
+  <!-- Small fish silhouettes for character -->
+  <g opacity="0.5" fill="#5ba3f5">
+    <!-- Fish 1 -->
+    <path d="M355,175 Q365,170 375,175 Q365,180 355,175 Z"/>
+    <path d="M378,175 L385,170 L385,180 Z"/>
+    <!-- Fish 2 -->
+    <path d="M140,185 Q150,180 160,185 Q150,190 140,185 Z"/>
+    <path d="M163,185 L170,180 L170,190 Z"/>
+  </g>
+
+  <!-- Tiny bubbles -->
+  <g fill="#5ba3f5" opacity="0.3">
+    <circle cx="175" cy="155" r="3"/>
+    <circle cx="182" cy="142" r="2"/>
+    <circle cx="340" cy="150" r="2.5"/>
+    <circle cx="348" cy="138" r="1.8"/>
+  </g>
+
+  <!-- "REEF WATCHERS" text arc at bottom -->
+  <defs>
+    <path id="textArc" d="M105,380 A180,180 0 0,0 407,380"/>
+  </defs>
+  <text font-family="'Trebuchet MS', 'Segoe UI', sans-serif" font-size="30" font-weight="700"
+        fill="#d4c4a8" letter-spacing="6" text-anchor="middle">
+    <textPath href="#textArc" startOffset="50%">REEF WATCHERS</textPath>
+  </text>
+
+  <!-- Small wave accent at very top inside circle -->
+  <path d="M180,130 Q195,120 210,130 Q225,140 240,130 Q255,120 270,130 Q285,140 300,130 Q315,120 335,130"
+        fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+</svg>

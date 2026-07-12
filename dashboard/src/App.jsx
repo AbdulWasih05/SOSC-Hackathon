@@ -64,12 +64,12 @@ export default function App() {
       {/* ── Top Header Bar ── */}
       <header className="topbar">
         <div className="brand">
-          <img src="/logo.png" alt="Reef Watchers" className="brand-icon" style={{ width: '28px', height: '28px', marginRight: '12px', objectFit: 'contain' }} />
+          <img src="/logo.svg" alt="Reef Watchers" className="brand-icon" style={{ width: '32px', height: '32px', marginRight: '12px', objectFit: 'contain', borderRadius: '50%' }} />
           Reef Watchers
         </div>
         <div className="topbar-sep" />
         <div className="topbar-meta">
-          <span className="topbar-route">Current Location: Palk Strait · Gulf of Mannar</span>
+          <span className="topbar-route">Current Location: Danish Waters</span>
           <span className="topbar-tag">Real-Time Engine</span>
           <span className="topbar-tag">AIS Surveillance</span>
         </div>
