@@ -5,8 +5,25 @@ import AlertFeed from './panels/AlertFeed.jsx'
 import Latency from './panels/Latency.jsx'
 import FeatureCards from './panels/FeatureCards.jsx'
 import VesselDetails from './panels/VesselDetails.jsx'
-import { connect } from './ws.js'
+import { connect, HTTP_BASE } from './ws.js'
 import { KIND_COLOR, isAlertTab } from './theme.js'
+
+// Friendly region label per EEZ country code, so the header follows whichever
+// zone file the engine serves (Denmark CSV/scenario, North Sea live, Gulf
+// firehose/scenario) instead of naming one region for all of them.
+const REGION_LABEL = {
+  DK: 'Kattegat · Danish EEZ',
+  NL: 'Southern North Sea · Dutch EEZ',
+  IN: 'Palk Strait · Gulf of Mannar',
+}
+
+// regionFromZones derives the header location from the served zones: the EEZ
+// feature's country maps to a friendly name, falling back to the EEZ's own name.
+function regionFromZones(fc) {
+  const eez = fc?.features?.find((f) => f?.properties?.type === 'eez')
+  if (!eez) return null
+  return REGION_LABEL[eez.properties.country] || eez.properties.name || null
+}
 
 export default function App() {
   const [metrics, setMetrics] = useState(null)
@@ -18,6 +35,7 @@ export default function App() {
   const [selectedVesselData, setSelectedVesselData] = useState(null)
   // Mobile bottom nav: 'map' | 'alerts' | 'stats'
   const [mobileTab, setMobileTab] = useState('map')
+  const [location, setLocation] = useState('Monitored region')
   const mapRef = useRef(null)
 
   const onPositions = useCallback((fc) => mapRef.current?.setVessels(fc), [])
@@ -60,6 +78,27 @@ export default function App() {
 
   useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus, onWeather }), [onAlert, onPositions, onWeather])
 
+  // Resolve the header location from the engine-served zones, retrying every 2s
+  // until it succeeds (the engine may still be starting, matching MapView's
+  // retry-until-loaded behavior for the zone/patrol config).
+  useEffect(() => {
+    let cancelled = false
+    let timer
+    const load = () => {
+      fetch(`${HTTP_BASE}/zones`)
+        .then((r) => r.json())
+        .then((fc) => {
+          if (cancelled) return
+          const label = regionFromZones(fc)
+          if (label) setLocation(label)
+          else timer = setTimeout(load, 2000)
+        })
+        .catch(() => { if (!cancelled) timer = setTimeout(load, 2000) })
+    }
+    load()
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [])
+
   const statusLabel = status === 'connected' ? 'Live' : status === 'disconnected' ? 'Offline' : 'Connecting'
 
   return (
@@ -72,7 +111,7 @@ export default function App() {
         </div>
         <div className="topbar-sep" />
         <div className="topbar-meta">
-          <span className="topbar-route">Current Location: Palk Strait · Gulf of Mannar</span>
+          <span className="topbar-route">Current Location: {location}</span>
           <span className="topbar-tag">Real-Time Engine</span>
           <span className="topbar-tag">AIS Surveillance</span>
         </div>
