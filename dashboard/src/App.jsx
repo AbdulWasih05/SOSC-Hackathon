@@ -12,6 +12,7 @@ export default function App() {
   const [metrics, setMetrics] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [status, setStatus] = useState('connecting')
+  const [weather, setWeather] = useState(null)
   const [rightTab, setRightTab] = useState('details')
   const [selectedMMSI, setSelectedMMSI] = useState(null)
   const [selectedVesselData, setSelectedVesselData] = useState(null)
@@ -54,8 +55,10 @@ export default function App() {
   // Live risk data (score, tier, factors) for the selected vessel, pushed by
   // MapView from the raw position frame so the Score Breakdown Drawer stays live.
   const onVesselData = useCallback((props) => setSelectedVesselData(props), [])
+  // Optional sea-state context (only sent when the engine runs with -weather).
+  const onWeather = useCallback((w) => setWeather(w), [])
 
-  useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus }), [onAlert, onPositions])
+  useEffect(() => connect({ onMetrics: setMetrics, onAlert, onPositions, onStatus: setStatus, onWeather }), [onAlert, onPositions, onWeather])
 
   const statusLabel = status === 'connected' ? 'Live' : status === 'disconnected' ? 'Offline' : 'Connecting'
 
@@ -74,6 +77,7 @@ export default function App() {
           <span className="topbar-tag">AIS Surveillance</span>
         </div>
         <div className="topbar-right">
+          <WeatherBadge weather={weather} />
           <span className="topbar-update">
             Last update <strong>:</strong>
           </span>
@@ -174,6 +178,33 @@ export default function App() {
       </nav>
     </div>
   )
+}
+
+// WeatherBadge shows the current regional sea state from the optional weather
+// layer. It renders nothing until the first "weather" frame arrives (so the
+// default engine build, which never sends one, is visually unchanged), and
+// reads "offline" whenever the reading is missing or stale (fail-open story:
+// the demo never breaks on a weather outage). Sea state drives the confidence
+// of fishing-pattern alerts on the weather-fishing-confidence branch.
+function WeatherBadge({ weather }) {
+  if (!weather) return null
+  const available = weather.available && weather.wave_height_m != null
+  const label = available
+    ? `Sea ${weather.wave_height_m.toFixed(1)} m${agoSuffix(weather.updated_ms)}`
+    : 'Weather: offline'
+  return (
+    <span className={`weather-badge${available ? '' : ' offline'}`} title="Open-Meteo marine sea state (context layer)">
+      <span className="weather-icon">🌊</span>
+      {label}
+    </span>
+  )
+}
+
+// agoSuffix renders " · updated Nm ago" for a recent-enough timestamp, else "".
+function agoSuffix(updatedMs) {
+  if (!updatedMs) return ''
+  const mins = Math.max(0, Math.round((Date.now() - updatedMs) / 60000))
+  return mins <= 0 ? ' · updated now' : ` · updated ${mins}m ago`
 }
 
 // Static key for the map marks: zones (the colored squares), alert kinds

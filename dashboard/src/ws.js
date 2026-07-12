@@ -1,6 +1,6 @@
 // Single websocket client for the whole dashboard (no state library, no axios;
-// native WebSocket + fetch only). Dispatches the three engine message types and
-// auto-reconnects.
+// native WebSocket + fetch only). Dispatches the engine message types (alert,
+// metrics, positions, and the optional weather status) and auto-reconnects.
 
 const host = location.hostname || 'localhost'
 export const HTTP_BASE = `http://${host}:8080`
@@ -24,6 +24,7 @@ export function connect(handlers) {
       if (msg.type === 'alert') handlers.onAlert?.(msg.alert)
       else if (msg.type === 'metrics') handlers.onMetrics?.(msg)
       else if (msg.type === 'positions') handlers.onPositions?.(msg.fc)
+      else if (msg.type === 'weather') handlers.onWeather?.(msg)
     }
     ws.onclose = () => {
       handlers.onStatus?.('disconnected')

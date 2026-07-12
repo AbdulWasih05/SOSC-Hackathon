@@ -188,6 +188,36 @@ body {
   border-color: var(--warn);
 }
 
+/* Weather context badge (optional -weather layer). Same brutalist badge form
+   as the status badge: hard edges, 2px border, uppercase mono. Accent when a
+   fresh sea-state reading is present; muted "offline" when missing or stale. */
+.weather-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 2px solid var(--accent);
+  border-radius: 0px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.weather-badge.offline {
+  border-color: var(--border-light);
+  background: transparent;
+  color: var(--ink-3);
+}
+
+.weather-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
 .status-dot {
   width: 7px;
   height: 7px;
@@ -1177,7 +1207,8 @@ body {
 
   .topbar-route,
   .topbar-tag,
-  .topbar-update {
+  .topbar-update,
+  .weather-badge {
     display: none;
   }
 

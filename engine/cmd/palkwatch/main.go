@@ -31,12 +31,20 @@ import (
 	"palkwatch/internal/ingest"
 	"palkwatch/internal/risk"
 	"palkwatch/internal/state"
+	"palkwatch/internal/weather"
 )
 
 // riskEnabled turns on the IUU risk-scoring engine (P0). Off by default: with it
 // off, the build is byte-for-byte the pre-risk behavior (no factor recording, no
 // risk sweep, no risk fields on the wire). Set by the -risk flag.
 var riskEnabled bool
+
+// weatherEnabled turns on the optional Open-Meteo sea-state context layer. Off
+// by default: with it off, no poller is started, nothing is fetched, and the
+// build behaves exactly as before. Set by the -weather flag. The layer is
+// async, off the hot path, and fails open, so it never affects detection or the
+// benchmark.
+var weatherEnabled bool
 
 func main() {
 	var (
@@ -60,6 +68,7 @@ func main() {
 	flag.Float64Var(&speed, "speed", 30, "aisdk replay speed (event seconds per wall second)")
 	flag.IntVar(&total, "n", 1_000_000, "firehose messages pre-generated and looped")
 	flag.BoolVar(&riskEnabled, "risk", false, "enable the IUU risk-scoring engine (5s sweep, tier alerts, risk fields on the wire)")
+	flag.BoolVar(&weatherEnabled, "weather", false, "enable the Open-Meteo sea-state context layer (async poll, fail-open, does not affect detection)")
 	flag.Parse()
 
 	// Mode selection (precedence): -fake, -scenario, -csv, -firehose, else the
@@ -150,8 +159,10 @@ type engine struct {
 	proc        *check.Processor
 	sweeper     *check.Sweeper
 	alertCh     chan alert.Alert
-	store       *risk.Store    // nil unless the risk engine is on
-	riskSweeper *risk.Sweeper  // nil unless the risk engine is on
+	store       *risk.Store     // nil unless the risk engine is on
+	riskSweeper *risk.Sweeper   // nil unless the risk engine is on
+	weather     *weather.Cache  // nil unless the weather layer is on
+	weatherPoll *weather.Poller // nil unless the weather layer is on
 }
 
 // buildEngine loads config and wires state, checks, and the worker pool. It does
@@ -199,11 +210,27 @@ func buildEngine(zonesPath, patrolPath string) *engine {
 		log.Info().Msg("risk engine on: 5s IUU scoring sweep, tier-transition alerts")
 	}
 
+	// Weather layer (optional): an async poller refreshes an in-memory sea-state
+	// cache for the monitored region. Constructed only behind -weather. The cache
+	// is read by the fishing decision (on the weather-fishing-confidence branch)
+	// and broadcast to the dashboard badge; it is never on the hot path and fails
+	// open, so the default build and the benchmark are unchanged.
+	var weatherCache *weather.Cache
+	var weatherPoll *weather.Poller
+	if weatherEnabled {
+		weatherCache = weather.NewCache()
+		lat, lon := geo.RegionAnchor(zs)
+		weatherPoll = weather.NewPoller(weatherCache, lat, lon)
+		// proc.SetWeather(weatherCache) is wired on the weather-fishing-confidence
+		// branch, where the fishing decision consumes the cache.
+		log.Info().Float64("lat", lat).Float64("lon", lon).Msg("weather layer on: Open-Meteo marine sea-state poll (async, fail-open)")
+	}
+
 	workers := runtime.GOMAXPROCS(0)
 	pipe := ingest.New(counters, workers, workers*2)
 	pipe.Start(func() ingest.BatchHandler { return proc.NewWorker() })
 
-	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh, store: store, riskSweeper: riskSweeper}
+	return &engine{st: st, cold: cold, counters: counters, pipe: pipe, proc: proc, sweeper: sweeper, alertCh: alertCh, store: store, riskSweeper: riskSweeper, weather: weatherCache, weatherPoll: weatherPoll}
 }
 
 // startTelemetry launches the metrics/alert broadcaster, the vessel position
@@ -214,6 +241,27 @@ func (e *engine) startTelemetry(ctx context.Context, hub *api.Hub) {
 	go runSweeper(ctx, e.sweeper)
 	if e.riskSweeper != nil {
 		go runRiskSweeper(ctx, e.riskSweeper)
+	}
+	if e.weatherPoll != nil {
+		go e.weatherPoll.Run(ctx)
+		go broadcastWeather(ctx, hub, e.weather)
+	}
+}
+
+// broadcastWeather emits the current sea-state status once a second (the
+// additive "weather" frame) for the dashboard badge. Best-effort context only;
+// detection never depends on it, and the frame reports available=false whenever
+// the reading is missing or stale so the badge degrades to "offline" on its own.
+func broadcastWeather(ctx context.Context, hub *api.Hub, cache *weather.Cache) {
+	t := time.NewTicker(time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			hub.Broadcast(cache.StatusMsg(time.Now().UnixMilli()))
+		}
 	}
 }
 

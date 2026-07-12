@@ -133,6 +133,22 @@ func pointSegDistM(px, py, ax, ay, bx, by float64) float64 {
 	return math.Hypot(px-(ax+t*dx), py-(ay+t*dy))
 }
 
+// RegionAnchor returns a single representative point (lat, lon) for the
+// monitored region, used to fetch regional context such as sea state. It is the
+// bounding-box center of the FIRST zone, which by convention is the primary
+// monitored area in each region file (Gulf of Mannar MNP, the southern North
+// Sea, the Kattegat). Averaging all zones is wrong here: the default zone file
+// is a global catalog of protected areas (Great Barrier Reef, Galapagos,
+// Chagos), whose mean lands in open ocean far from the demo. Returns (0, 0) for
+// an empty slice.
+func RegionAnchor(zones []*Zone) (lat, lon float64) {
+	if len(zones) == 0 {
+		return 0, 0
+	}
+	c := zones[0].Poly.Bound().Center() // orb.Point is [lon, lat]
+	return c[1], c[0]
+}
+
 // LoadZones reads a GeoJSON FeatureCollection of Polygon zones. Each feature's
 // properties supply id, name, type (mpa|eez), and optional country.
 func LoadZones(path string) ([]*Zone, error) {
