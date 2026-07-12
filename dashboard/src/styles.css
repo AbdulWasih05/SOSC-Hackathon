@@ -39,8 +39,6 @@ body,
 #root {
   height: 100%;
   width: 100%;
-  /* Prevent mobile bounce / overscroll issues */
-  overflow: hidden;
 }
 
 body {

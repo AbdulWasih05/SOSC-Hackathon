@@ -5,10 +5,21 @@ import AlertFeed from './panels/AlertFeed.jsx'
 import Latency from './panels/Latency.jsx'
 import FeatureCards from './panels/FeatureCards.jsx'
 import VesselDetails from './panels/VesselDetails.jsx'
+import LandingPage from './LandingPage.jsx'
 import { connect } from './ws.js'
 import { KIND_COLOR } from './theme.js'
 
 export default function App() {
+  const [view, setView] = useState('landing') // 'landing' | 'dashboard'
+
+  if (view === 'landing') {
+    return <LandingPage onEnter={() => setView('dashboard')} />
+  }
+
+  return <Dashboard />
+}
+
+function Dashboard() {
   const [metrics, setMetrics] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [status, setStatus] = useState('connecting')
@@ -176,7 +187,7 @@ export default function App() {
   )
 }
 
-// Static key for the map marks: zones (the colored squares), alert kinds
+// Static key for the map marks: zones (the coloured squares), alert kinds
 // (flagged vessel dots), and assets. Pure presentation, no engine data.
 function MapLegend() {
   return (
